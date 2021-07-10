@@ -737,7 +737,6 @@ pub fn read<R: BufRead>(reader: &mut R) -> Value {
 #[cfg(test)]
 mod tests {
 
-    /*
     mod first_char_tests {
         use crate::reader::first_char;
 
@@ -916,7 +915,6 @@ mod tests {
             );
         }
     }
-    */
 
     mod try_read_keyword_tests {
         use {
@@ -951,7 +949,6 @@ mod tests {
         fn try_read_shorthand_with_refd_namespace() { todo!() }
     }
 
-    /*
     mod try_read_tests {
         use crate::persistent_list;
         use crate::persistent_list_map;
@@ -962,12 +959,14 @@ mod tests {
         use crate::symbol::Symbol;
         use crate::value::{ToValue,Value};
         use crate::value::Value::{PersistentList, PersistentListMap, PersistentVector};
+        use crate::environment::Environment;
+        use std::rc::Rc;
 
         #[test]
         fn try_read_empty_map_test() {
             assert_eq!(
                 PersistentListMap(persistent_list_map::PersistentListMap::Empty),
-                try_read("{} ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "{} ").ok().unwrap().1
             );
         }
 
@@ -975,7 +974,7 @@ mod tests {
         fn try_read_string_test() {
             assert_eq!(
                 Value::String(String::from("a string")),
-                try_read("\"a string\" ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "\"a string\" ").ok().unwrap().1
             );
         }
 
@@ -983,7 +982,7 @@ mod tests {
         fn try_read_string_empty() {
             assert_eq!(
                 Value::String(String::from("")),
-                try_read("\"\"").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "\"\"").ok().unwrap().1
             );
         }
 
@@ -991,7 +990,7 @@ mod tests {
         fn try_read_string_escaped_quotes() {
             assert_eq!(
                 Value::String(String::from("\" \" c c caf \" fadsg")),
-                try_read(r#""\" \" c c caf \" fadsg""#).ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), r#""\" \" c c caf \" fadsg""#).ok().unwrap().1
             );
         }
 
@@ -999,30 +998,30 @@ mod tests {
         fn try_read_string_newlines() {
             assert_eq!(
                 Value::String(String::from("\n fadsg \n")),
-                try_read(r#""\n fadsg \n""#).ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), r#""\n fadsg \n""#).ok().unwrap().1
             );
         }
 
         #[test]
         fn try_read_int_test() {
-            assert_eq!(Value::I32(1), try_read("1 ").ok().unwrap().1);
+            assert_eq!(Value::I32(1), try_read(Rc::new(Environment::new_main_environment()), "1 ").ok().unwrap().1);
         }
 
         #[test]
         fn try_read_negative_int_test() {
-            assert_eq!(Value::I32(-1), try_read("-1 ").ok().unwrap().1);
+            assert_eq!(Value::I32(-1), try_read(Rc::new(Environment::new_main_environment()), "-1 ").ok().unwrap().1);
         }
 
         #[test]
         fn try_read_negative_int_with_second_dash_test() {
-            assert_eq!(Value::I32(-1), try_read("-1-2 ").ok().unwrap().1);
+            assert_eq!(Value::I32(-1), try_read(Rc::new(Environment::new_main_environment()), "-1-2 ").ok().unwrap().1);
         }
 
         #[test]
         fn try_read_valid_symbol_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern("my-symbol")),
-                try_read("my-symbol ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "my-symbol ").ok().unwrap().1
             );
         }
 
@@ -1030,7 +1029,7 @@ mod tests {
         fn try_read_minus_as_valid_symbol_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern("-")),
-                try_read("- ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "- ").ok().unwrap().1
             );
         }
 
@@ -1038,7 +1037,7 @@ mod tests {
         fn try_read_minus_prefixed_as_valid_symbol_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern("-prefixed")),
-                try_read("-prefixed ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "-prefixed ").ok().unwrap().1
             );
         }
 
@@ -1046,7 +1045,7 @@ mod tests {
         fn try_read_empty_list_test() {
             assert_eq!(
                 PersistentList(persistent_list::PersistentList::Empty),
-                try_read("() ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "() ").ok().unwrap().1
             );
         }
 
@@ -1054,23 +1053,23 @@ mod tests {
         fn try_read_empty_vector_test() {
             assert_eq!(
                 PersistentVector(persistent_vector::PersistentVector { vals: [].to_vec() }),
-                try_read("[] ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "[] ").ok().unwrap().1
             );
         }
 
         #[test]
         fn try_read_bool_true_test() {
-            assert_eq!(Value::Boolean(true), try_read("true ").ok().unwrap().1)
+            assert_eq!(Value::Boolean(true), try_read(Rc::new(Environment::new_main_environment()), "true ").ok().unwrap().1)
         }
 
         #[test]
         fn try_read_bool_false_test() {
-            assert_eq!(Value::Boolean(false), try_read("false ").ok().unwrap().1)
+            assert_eq!(Value::Boolean(false), try_read(Rc::new(Environment::new_main_environment()), "false ").ok().unwrap().1)
         }
         #[test]
         fn try_read_meta_symbol() {
            let with_meta = "^cat a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(Rc::new(Environment::new_main_environment()), with_meta).ok().unwrap().1 {
                 Value::Symbol(symbol) => {
                     assert!(symbol.meta().contains_key(&Keyword::intern("tag").to_rc_value()));
                     assert_eq!(
@@ -1084,7 +1083,7 @@ mod tests {
         #[test]
         fn try_read_meta_string() {
             let with_meta = "^\"cat\" a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(Rc::new(Environment::new_main_environment()), with_meta).ok().unwrap().1 {
                 Value::Symbol(symbol) => {
                     assert_eq!(String::from("a"),symbol.name);
                     assert!(symbol.meta().contains_key(&Keyword::intern("tag").to_rc_value()));
@@ -1099,7 +1098,7 @@ mod tests {
         #[test]
         fn try_read_meta_persistent_list_map() {
             let with_meta = "^{:cat 1 :dog 2} a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(Rc::new(Environment::new_main_environment()), with_meta).ok().unwrap().1 {
                 Value::Symbol(symbol) => {
                     assert!(symbol.meta().contains_key(&Keyword::intern("cat").to_rc_value()));
                     assert_eq!(Value::I32(1),*symbol.meta().get(&Keyword::intern("cat").to_rc_value()));
@@ -1113,7 +1112,7 @@ mod tests {
         #[test]
         fn try_read_multiple_meta_keyword() {
             let with_meta = "^:cat ^:dog a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(Rc::new(Environment::new_main_environment()), with_meta).ok().unwrap().1 {
                 Value::Symbol(symbol) => {
                     assert!(symbol.meta().contains_key(&Keyword::intern("cat").to_rc_value()));
                     assert!(symbol.meta().contains_key(&Keyword::intern("dog").to_rc_value()));
@@ -1124,7 +1123,7 @@ mod tests {
         #[test]
         fn try_read_meta_keyword() {
             let with_meta = "^:cat a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(Rc::new(Environment::new_main_environment()), with_meta).ok().unwrap().1 {
                 Value::Symbol(symbol) => {
                    assert!(symbol.meta().contains_key(&Keyword::intern("cat").to_rc_value()));
                 },
@@ -1135,50 +1134,52 @@ mod tests {
         fn try_read_forward_slash_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern(&"/")),
-                try_read("/ ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "/ ").ok().unwrap().1
             );
         }
         #[test]
         fn try_read_forward_slash_with_letters_and_fails_test() {
-            assert!(try_read("/ab ").ok().is_none());
+            assert!(try_read(Rc::new(Environment::new_main_environment()), "/ab ").ok().is_none());
         }
 
         #[test]
         fn try_read_forward_slash_keyword_test() {
             assert_eq!(
                 Value::Keyword(Keyword::intern(&"/")),
-                try_read(":/ ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), ":/ ").ok().unwrap().1
             );
         }
         
         #[test]
         fn try_read_forward_slash_keyword_with_letters_and_fails_test() {
-            assert!(try_read(":/ab ").ok().is_none());
+            assert!(try_read(Rc::new(Environment::new_main_environment()), ":/ab ").ok().is_none());
         }
 
         #[test]
         fn try_read_forward_slash_keyword_with_ns_test() {
             assert_eq!(
                 Value::Keyword(Keyword::intern_with_ns("core", "/")),
-                try_read(":core// ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), ":core// ").ok().unwrap().1
             );
         }
         
         #[test]
         fn try_read_forward_slash_keyword_with_ns_with_letters_and_fails_test() {
-            assert!(try_read(":core//ab ").ok().is_none());
+            assert!(try_read(Rc::new(Environment::new_main_environment()), ":core//ab ").ok().is_none());
         }
     }
 
     mod regex_tests {
         use crate::reader::try_read;
         use crate::value::Value;
+        use crate::environment::Environment;
+        use std::rc::Rc;
 
         #[test]
         fn try_read_simple_regex_pattern_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("a").unwrap()),
-                try_read(r###"#"a" "###).ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), r###"#"a" "###).ok().unwrap().1
             );
         }
 
@@ -1186,7 +1187,7 @@ mod tests {
         fn try_read_regex_pattern_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("hello").unwrap()),
-                try_read("#\"hello\" ").ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), "#\"hello\" ").ok().unwrap().1
             );
         }
 
@@ -1194,7 +1195,7 @@ mod tests {
         fn try_read_regex_pattern_escaped_quote_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("h\"e\"l\"l\"o\"").unwrap()),
-                try_read(r#"#"h\"e\"l\"l\"o\"" something"#).ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), r#"#"h\"e\"l\"l\"o\"" something"#).ok().unwrap().1
             );
         }
 
@@ -1202,7 +1203,7 @@ mod tests {
         fn try_read_regex_pattern_escaped_quote_prefixed_by_whitespace_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("h\"e\"l\"l \"o").unwrap()),
-                try_read(r#"#"h\"e\"l\"l \"o""#).ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), r#"#"h\"e\"l\"l \"o""#).ok().unwrap().1
             );
         }
 
@@ -1210,7 +1211,7 @@ mod tests {
         fn try_read_regex_pattern_escaped_quote_suffixed_by_whitespace_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("h\"e\"l\" l \"o").unwrap()),
-                try_read(r#"#"h\"e\"l\" l \"o" something"#).ok().unwrap().1
+                try_read(Rc::new(Environment::new_main_environment()), r#"#"h\"e\"l\" l \"o" something"#).ok().unwrap().1
             );
         }
     }
@@ -1298,5 +1299,4 @@ mod tests {
             assert_eq!(false, is_clojure_whitespace('a'));
         }
     }
-    */
 }
