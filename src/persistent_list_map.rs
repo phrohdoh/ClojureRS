@@ -14,6 +14,7 @@
 //! b => {:a 1 :b 3}
 
 use crate::maps::MapEntry;
+use crate::value::{ToValue, Value};
 use crate::traits;
 
 use std::collections::HashMap;
@@ -101,6 +102,7 @@ macro_rules! merge {
 /// A PersistentListMap.
 pub trait IPersistentMap {
     fn get(&self, key: &Rc<Value>) -> Rc<Value>;
+    fn get_with_default(&self, key: &Rc<Value>, default: &Rc<Value>) -> Rc<Value>;
     fn assoc(&self, key: Rc<Value>, value: Rc<Value>) -> Self;
     fn contains_key(&self, key: &Rc<Value>) -> bool;
 }
@@ -115,6 +117,20 @@ impl IPersistentMap for PersistentListMap {
                 parent.get(key)
             }
             PersistentListMap::Empty => Rc::new(Value::Nil),
+        }
+    }
+    fn get_with_default(&self, key: &Rc<Value>, default: &Rc<Value>) -> Rc<Value> {
+        match self {
+            PersistentListMap::Map(parent, entry) => {
+                if entry.key == *key {
+                    return Rc::clone(&entry.val);
+                }
+                match parent.get_with_default(key, default).as_ref() {
+                    Value::Nil => default.clone(),
+                    val => (*val).to_rc_value(),
+                }
+            }
+            PersistentListMap::Empty => default.clone(),
         }
     }
     fn assoc(&self, key: Rc<Value>, val: Rc<Value>) -> PersistentListMap {
@@ -142,6 +158,17 @@ impl IPersistentMap for Rc<PersistentListMap> {
                     return Rc::clone(&entry.val);
                 }
                 parent.get(key)
+            }
+            PersistentListMap::Empty => Rc::new(Value::Nil),
+        }
+    }
+    fn get_with_default(&self, key: &Rc<Value>, default: &Rc<Value>) -> Rc<Value> {
+        match &**self {
+            PersistentListMap::Map(parent, entry) => {
+                if entry.key == *key {
+                    return Rc::clone(&entry.val);
+                }
+                parent.get_with_default(key, default)
             }
             PersistentListMap::Empty => Rc::new(Value::Nil),
         }
@@ -306,9 +333,37 @@ mod tests {
         println!("{}", map3);
         println!("{}", map4);
     }
+
+    #[test]
+    fn get() {
+        let map = persistent_list_map!(map_entry!("k", "v"));
+        let k_val = map.get(&Keyword::intern("k").to_rc_value());
+        let x_val = map.get(&Keyword::intern("x").to_rc_value());
+        assert_eq!(k_val, "v".to_rc_value());
+        assert_eq!(x_val, Value::Nil.into());
+    }
+
+    #[test]
+    fn get_with_default() {
+        let map = persistent_list_map!(map_entry!("x", "v"));
+        let key = Keyword::intern("k").to_rc_value();
+        let default = Keyword::intern("not-found").to_rc_value();
+        let val: Rc<Value> = map.get_with_default(&key, &default);
+        assert_eq!(default, val);
+    }
+
+    #[test]
+    fn get_with_default_empty() {
+        let map = persistent_list_map!(/*empty*/);
+        let key = Keyword::intern("k").to_rc_value();
+        let default = Keyword::intern("not-found").to_rc_value();
+        let val: Rc<Value> = map.get_with_default(&key, &default);
+        assert_eq!(default, val);
+    }
+
     #[test]
     fn contains_key() {
-        let map1 = persistent_list_map! { "a" => 12, "b" => 13 };
+        let map1 = persistent_list_map!{ "a" => 12, "b" => 13 };
         assert!(map1.contains_key(&Keyword::intern("a").to_rc_value()));
         assert!(map1.contains_key(&Keyword::intern("b").to_rc_value()));
         assert!(!map1.contains_key(&Keyword::intern("c").to_rc_value()));
