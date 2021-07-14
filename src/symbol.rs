@@ -16,9 +16,16 @@ pub struct Symbol {
     pub meta: PersistentListMap,
 }
 macro_rules! sym {
-    ($x:expr) => {
-        Symbol::intern($x)
-    }
+    ($n:expr) => {crate::symbol::Symbol::intern($n)};
+    ($ns:expr,$n:expr) => {crate::symbol::Symbol::intern_with_ns($ns,$n)};
+}
+macro_rules! sym_val {
+    ($n:expr) => {sym!($n).to_value()};
+    ($ns:expr,$n:expr) => {sym!($ns,$n).to_value()};
+}
+macro_rules! sym_rc_val {
+    ($n:expr) => {sym_val!($n).to_rc_value()};
+    ($ns:expr,$n:expr) => {sym_val!($ns,$n).to_rc_value()};
 }
 impl Hash for Symbol {
     fn hash<H: Hasher>(&self, state: &mut H) {

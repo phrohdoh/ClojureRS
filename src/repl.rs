@@ -49,7 +49,7 @@ impl Repl {
             // Eval
             let evaled_next = self.eval(&next);
             // Print
-            println!("{}", evaled_next);
+            println!("{} ;; (type *1) => {}", evaled_next, evaled_next.type_tag());
             // Loop
         }
     }

@@ -11,6 +11,9 @@ impl Keyword {
     pub fn name(&self) -> &str {
         self.sym.name()
     }
+    pub fn ns(&self) -> &str {
+        &self.sym.ns
+    }
     pub fn intern(name: &str) -> Keyword {
         Keyword {
             sym: Symbol::intern(name),
@@ -24,6 +27,18 @@ impl Keyword {
             sym: Symbol::intern_with_ns(ns, name),
         }
     }
+}
+macro_rules! keyword {
+    ($n:expr) => {crate::keyword::Keyword::intern($n)};
+    ($ns:expr, $n:expr) => {crate::keyword::Keyword::intern_with_ns($ns,$n)};
+}
+macro_rules! keyword_val {
+    ($n:expr) => {keyword!($n).to_value()};
+    ($ns:expr,$n:expr) => {keyword!($ns,$n).to_value()};
+}
+macro_rules! keyword_rc_val {
+    ($n:expr) => {keyword_val!($n).to_rc_value()};
+    ($ns:expr,$n:expr) => {keyword_val!($ns,$n).to_rc_value()};
 }
 impl fmt::Display for Keyword {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

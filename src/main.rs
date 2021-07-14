@@ -18,10 +18,12 @@ mod environment;
 mod error_message;
 mod ifn;
 mod iterable;
+#[macro_use]
 mod keyword;
 mod lambda;
 mod maps;
 mod namespace;
+#[macro_use]
 mod persistent_vector;
 mod reader;
 mod repl;

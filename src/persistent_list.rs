@@ -44,6 +44,17 @@ macro_rules! list_val {
         }
     };
 }
+macro_rules! list_rc_val {
+    ( $($val:expr) *) => {
+        {
+            let mut temp_list_as_vec = vec![];
+            $(
+                temp_list_as_vec.push($val.to_rc_value());
+            )*
+            temp_list_as_vec.into_iter().collect::<crate::persistent_list::PersistentList>().to_rc_value()
+        }
+    };
+}
 // @TODO definitely don't do this
 #[derive(Debug, Clone, Hash)]
 struct EmptyHash {}
@@ -62,6 +73,9 @@ pub fn cons(head: Value, tail: PersistentList) -> PersistentList {
     cons_rc(Rc::new(head), Rc::new(tail))
 }
 impl PersistentList {
+    pub fn is_empty(&self) -> bool {
+        self == &PersistentList::Empty || self.len() == 0
+    }
     pub fn len(&self) -> i32 {
         match self {
             Cons(_, _, count) => *count,

@@ -12,6 +12,33 @@ use crate::traits;
 pub struct PersistentVector {
     pub vals: Vec<Rc<Value>>,
 }
+macro_rules! pvec {
+    ($($val:expr)*) => {
+        {
+            let mut v = vec![];
+            $(v.push($val.to_rc_value());)*
+            v.into_iter().collect::<crate::persistent_vector::PersistentVector>()
+        }
+    };
+}
+macro_rules! pvec_val {
+    ($($val:expr)*) => {
+        {
+            let mut v = vec![];
+            $(v.push($val.to_rc_value());)*
+            v.into_iter().collect::<crate::persistent_vector::PersistentVector>().to_value()
+        }
+    };
+}
+macro_rules! pvec_rc_val {
+    ($($val:expr)*) => {
+        {
+            let mut v = vec![];
+            $(v.push($val.to_rc_value());)*
+            v.into_iter().collect::<crate::persistent_vector::PersistentVector>().to_rc_value()
+        }
+    };
+}
 impl traits::IMeta for PersistentVector {
     fn meta(&self) -> PersistentListMap {
         // @TODO implement
