@@ -393,6 +393,22 @@ pub fn to_value_parser<I, O: ToValue>(
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+pub fn try_read_dispatch(input: &str) -> IResult<&str, Option<Value>> {
+    named!(hash<&str, &str>, preceded!(consume_clojure_whitespaces_parser, tag!("#")));
+    let (rest_input, _hash_ch) = hash(input)?;
+
+    named!(discard<&str, &str>, tag!("_"));
+    if let Ok((rest_input, _discard_ch)) = discard(rest_input) {
+        return try_read_discard(rest_input).map(|(rest_input, _)| (rest_input, None));
+    }
+
+    Ok((rest_input, Some(Value::Condition(format!("dispatch '{:#?}'", rest_input))))) // @TODO
+}
+
+pub fn try_read_discard(input: &str) -> IResult<&str, ()> {
+    try_read(input).map(|(rest_input, _value)| (rest_input, ()))
+}
+
 // @TODO make sure whitespace or 'nothing' is at the end, fail for
 // float like numbers
 /// Tries to parse &str into Value::I32
@@ -489,7 +505,7 @@ pub fn try_read_var(input: &str) -> IResult<&str, Value> {
     let (rest_input, val) = try_read(rest_input)?;
     // #'x just expands to (var x), just like 'x is just a shorthand for (quote x)
     // So here we return (var val)
-    Ok((rest_input,list_val!(sym!("var") val)))
+    Ok((rest_input,list_val!(sym!("var") val.unwrap())))
 }
 
 // @TODO Perhaps generalize this, or even generalize it as a reader macro
@@ -510,8 +526,8 @@ pub fn try_read_map(input: &str) -> IResult<&str, Value> {
         let (_rest_input, next_key) = try_read(rest_input)?;
         let (_rest_input, next_val) = try_read(_rest_input)?;
         map_as_vec.push(MapEntry {
-            key: Rc::new(next_key),
-            val: Rc::new(next_val),
+            key: Rc::new(next_key.unwrap()),
+            val: Rc::new(next_val.unwrap()),
         });
         rest_input = _rest_input;
     }
@@ -522,6 +538,7 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
     let (rest_input, _) = meta_start(input)?;
 
     let (rest_input,meta_value) = try_read(rest_input)?;
+    let meta_value = meta_value.unwrap();
     let mut meta = PersistentListMap::Empty;
     match &meta_value {
         Value::Symbol(symbol) => {
@@ -554,7 +571,7 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
     let (rest_input,iobj_value) = try_read(rest_input)?;
 
     // Extra clone, implement these functions for plain Values 
-    if let Some(iobj_value) =  iobj_value.to_rc_value().try_as_protocol::<protocols::IObj>() {
+    if let Some(iobj_value) =  iobj_value.unwrap().to_rc_value().try_as_protocol::<protocols::IObj>() {
         // @TODO get actual line and column info
         let line = 1;
         let column = 1;
@@ -594,7 +611,9 @@ pub fn try_read_vector(input: &str) -> IResult<&str, Value> {
 
         // Otherwise, we need to keep reading until we get that closing bracket letting us know we're finished
         let (_rest_input, form) = try_read(rest_input)?;
-        vector_as_vec.push(form.to_rc_value());
+        if let Some(form) = form {
+            vector_as_vec.push(form.to_rc_value());
+        }
         rest_input = _rest_input;
     }
 }
@@ -611,7 +630,9 @@ pub fn try_read_list(input: &str) -> IResult<&str, Value> {
             return Ok((after_list_input, list_as_vec.into_list().to_value()));
         }
         let (_rest_input, form) = try_read(rest_input)?;
-        list_as_vec.push(form.to_rc_value());
+        if let Some(form) = form {
+            list_as_vec.push(form.to_rc_value());
+        }
         rest_input = _rest_input;
     }
 }
@@ -624,28 +645,29 @@ pub fn try_read_quoted(input: &str) -> IResult<&str, Value> {
     let (rest_input, quoted_form_value) = try_read(form)?;
 
     // (quote value)
-    Ok((rest_input, list_val!(sym!("quote") quoted_form_value)))
+    Ok((rest_input, list_val!(sym!("quote") quoted_form_value.unwrap())))
 }
 
-pub fn try_read(input: &str) -> IResult<&str, Value> {
+pub fn try_read(input: &str) -> IResult<&str, Option<Value>> {
     preceded(
         consume_clojure_whitespaces_parser,
         alt((
-            try_read_meta,
-            try_read_quoted,
-            try_read_nil,
-            try_read_map,
-            try_read_string,
-            try_read_f64,
-            try_read_i32,
-            try_read_bool,
-            try_read_nil,
-            try_read_symbol,
-            try_read_keyword,
-            try_read_list,
-            try_read_vector,
-            try_read_pattern,
-            try_read_var,
+            |i| try_read_meta(i)   .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_quoted(i) .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_nil(i)    .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_map(i)    .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_string(i) .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_f64(i)    .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_i32(i)    .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_bool(i)   .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_nil(i)    .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_symbol(i) .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_keyword(i).map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_list(i)   .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_vector(i) .map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_pattern(i).map(|(rest_input, v)| (rest_input, v.into())),
+            |i| try_read_var(i)    .map(|(rest_input, v)| (rest_input, v.into())),
+            try_read_dispatch,
         )),
     )(input)
 }
@@ -660,7 +682,7 @@ pub fn try_read(input: &str) -> IResult<&str, Value> {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // This is the high level read function that Clojure RS wraps
-pub fn read<R: BufRead>(reader: &mut R) -> Value {
+pub fn read<R: BufRead>(reader: &mut R) -> Option<Value> {
     // This is a buffer that will accumulate if a read requires more
     // text to make sense, such as trying to read (+ 1
     let mut input_buffer = String::new();
@@ -671,7 +693,7 @@ pub fn read<R: BufRead>(reader: &mut R) -> Value {
         let maybe_line = reader.by_ref().lines().next();
 
         match maybe_line {
-            Some(Err(e)) => return Value::Condition(format!("Reader error: {}", e)),
+            Some(Err(e)) => return Value::Condition(format!("Reader error: {}", e)).into(),
             // `lines` does not include \n,  but \n is part of the whitespace given to the reader
             // (and is important for reading comments) so we will push a newline as well
             Some(Ok(line)) => {
@@ -679,7 +701,7 @@ pub fn read<R: BufRead>(reader: &mut R) -> Value {
                 input_buffer.push_str("\n");
             }
             None => {
-                return Value::Condition(String::from("Tried to read empty stream; unexpected EOF"))
+                return Value::Condition(String::from("Tried to read empty stream; unexpected EOF")).into()
             }
         }
 
@@ -692,8 +714,8 @@ pub fn read<R: BufRead>(reader: &mut R) -> Value {
                 return Value::Condition(format!(
                     "Reader Error: could not read next form; {:?}",
                     err
-                ))
-            }
+                )).into()
+            },
         }
     }
 }
@@ -895,7 +917,7 @@ mod tests {
         fn try_read_empty_map_test() {
             assert_eq!(
                 PersistentListMap(persistent_list_map::PersistentListMap::Empty),
-                try_read("{} ").ok().unwrap().1
+                try_read("{} ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -903,7 +925,7 @@ mod tests {
         fn try_read_string_test() {
             assert_eq!(
                 Value::String(String::from("a string")),
-                try_read("\"a string\" ").ok().unwrap().1
+                try_read("\"a string\" ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -911,7 +933,7 @@ mod tests {
         fn try_read_string_empty() {
             assert_eq!(
                 Value::String(String::from("")),
-                try_read("\"\"").ok().unwrap().1
+                try_read("\"\"").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -919,7 +941,7 @@ mod tests {
         fn try_read_string_escaped_quotes() {
             assert_eq!(
                 Value::String(String::from("\" \" c c caf \" fadsg")),
-                try_read(r#""\" \" c c caf \" fadsg""#).ok().unwrap().1
+                try_read(r#""\" \" c c caf \" fadsg""#).ok().unwrap().1.unwrap(),
             );
         }
 
@@ -927,30 +949,39 @@ mod tests {
         fn try_read_string_newlines() {
             assert_eq!(
                 Value::String(String::from("\n fadsg \n")),
-                try_read(r#""\n fadsg \n""#).ok().unwrap().1
+                try_read(r#""\n fadsg \n""#).ok().unwrap().1.unwrap(),
             );
         }
 
         #[test]
         fn try_read_int_test() {
-            assert_eq!(Value::I32(1), try_read("1 ").ok().unwrap().1);
+            assert_eq!(
+                Value::I32(1),
+                try_read("1 ").ok().unwrap().1.unwrap(),
+            );
         }
 
         #[test]
         fn try_read_negative_int_test() {
-            assert_eq!(Value::I32(-1), try_read("-1 ").ok().unwrap().1);
+            assert_eq!(
+                Value::I32(-1),
+                try_read("-1 ").ok().unwrap().1.unwrap(),
+            );
         }
 
         #[test]
         fn try_read_negative_int_with_second_dash_test() {
-            assert_eq!(Value::I32(-1), try_read("-1-2 ").ok().unwrap().1);
+            assert_eq!(
+                Value::I32(-1),
+                try_read("-1-2 ").ok().unwrap().1.unwrap(),
+            );
         }
 
         #[test]
         fn try_read_valid_symbol_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern("my-symbol")),
-                try_read("my-symbol ").ok().unwrap().1
+                try_read("my-symbol ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -958,7 +989,7 @@ mod tests {
         fn try_read_minus_as_valid_symbol_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern("-")),
-                try_read("- ").ok().unwrap().1
+                try_read("- ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -966,7 +997,7 @@ mod tests {
         fn try_read_minus_prefixed_as_valid_symbol_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern("-prefixed")),
-                try_read("-prefixed ").ok().unwrap().1
+                try_read("-prefixed ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -974,7 +1005,7 @@ mod tests {
         fn try_read_empty_list_test() {
             assert_eq!(
                 PersistentList(persistent_list::PersistentList::Empty),
-                try_read("() ").ok().unwrap().1
+                try_read("() ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -982,23 +1013,29 @@ mod tests {
         fn try_read_empty_vector_test() {
             assert_eq!(
                 PersistentVector(persistent_vector::PersistentVector { vals: [].to_vec() }),
-                try_read("[] ").ok().unwrap().1
+                try_read("[] ").ok().unwrap().1.unwrap(),
             );
         }
 
         #[test]
         fn try_read_bool_true_test() {
-            assert_eq!(Value::Boolean(true), try_read("true ").ok().unwrap().1)
+            assert_eq!(
+                Value::Boolean(true),
+                try_read("true ").ok().unwrap().1.unwrap(),
+            );
         }
 
         #[test]
         fn try_read_bool_false_test() {
-            assert_eq!(Value::Boolean(false), try_read("false ").ok().unwrap().1)
+            assert_eq!(
+                Value::Boolean(false),
+                try_read("false ").ok().unwrap().1.unwrap(),
+            );
         }
         #[test]
         fn try_read_meta_symbol() {
            let with_meta = "^cat a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(with_meta).ok().unwrap().1.unwrap() {
                 Value::Symbol(symbol) => {
                     assert!(symbol.meta().contains_key(&Keyword::intern("tag").to_rc_value()));
                     assert_eq!(
@@ -1012,7 +1049,7 @@ mod tests {
         #[test]
         fn try_read_meta_string() {
             let with_meta = "^\"cat\" a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(with_meta).ok().unwrap().1.unwrap() {
                 Value::Symbol(symbol) => {
                     assert_eq!(String::from("a"),symbol.name);
                     assert!(symbol.meta().contains_key(&Keyword::intern("tag").to_rc_value()));
@@ -1027,7 +1064,7 @@ mod tests {
         #[test]
         fn try_read_meta_persistent_list_map() {
             let with_meta = "^{:cat 1 :dog 2} a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(with_meta).ok().unwrap().1.unwrap() {
                 Value::Symbol(symbol) => {
                     assert!(symbol.meta().contains_key(&Keyword::intern("cat").to_rc_value()));
                     assert_eq!(Value::I32(1),*symbol.meta().get(&Keyword::intern("cat").to_rc_value()));
@@ -1041,7 +1078,7 @@ mod tests {
         #[test]
         fn try_read_multiple_meta_keyword() {
             let with_meta = "^:cat ^:dog a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(with_meta).ok().unwrap().1.unwrap() {
                 Value::Symbol(symbol) => {
                     assert!(symbol.meta().contains_key(&Keyword::intern("cat").to_rc_value()));
                     assert!(symbol.meta().contains_key(&Keyword::intern("dog").to_rc_value()));
@@ -1052,7 +1089,7 @@ mod tests {
         #[test]
         fn try_read_meta_keyword() {
             let with_meta = "^:cat a";
-            match try_read(with_meta).ok().unwrap().1 {
+            match try_read(with_meta).ok().unwrap().1.unwrap() {
                 Value::Symbol(symbol) => {
                    assert!(symbol.meta().contains_key(&Keyword::intern("cat").to_rc_value()));
                 },
@@ -1063,7 +1100,7 @@ mod tests {
         fn try_read_forward_slash_test() {
             assert_eq!(
                 Value::Symbol(Symbol::intern(&"/")),
-                try_read("/ ").ok().unwrap().1
+                try_read("/ ").ok().unwrap().1.unwrap(),
             );
         }
         #[test]
@@ -1075,7 +1112,7 @@ mod tests {
         fn try_read_forward_slash_keyword_test() {
             assert_eq!(
                 Value::Keyword(Keyword::intern(&"/")),
-                try_read(":/ ").ok().unwrap().1
+                try_read(":/ ").ok().unwrap().1.unwrap(),
             );
         }
         
@@ -1088,7 +1125,7 @@ mod tests {
         fn try_read_forward_slash_keyword_with_ns_test() {
             assert_eq!(
                 Value::Keyword(Keyword::intern_with_ns("core", "/")),
-                try_read(":core// ").ok().unwrap().1
+                try_read(":core// ").ok().unwrap().1.unwrap(),
             );
         }
         
@@ -1106,7 +1143,7 @@ mod tests {
         fn try_read_simple_regex_pattern_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("a").unwrap()),
-                try_read(r###"#"a" "###).ok().unwrap().1
+                try_read(r###"#"a" "###).ok().unwrap().1.unwrap(),
             );
         }
 
@@ -1114,7 +1151,7 @@ mod tests {
         fn try_read_regex_pattern_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("hello").unwrap()),
-                try_read("#\"hello\" ").ok().unwrap().1
+                try_read("#\"hello\" ").ok().unwrap().1.unwrap(),
             );
         }
 
@@ -1122,7 +1159,7 @@ mod tests {
         fn try_read_regex_pattern_escaped_quote_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("h\"e\"l\"l\"o\"").unwrap()),
-                try_read(r#"#"h\"e\"l\"l\"o\"" something"#).ok().unwrap().1
+                try_read(r#"#"h\"e\"l\"l\"o\"" something"#).ok().unwrap().1.unwrap(),
             );
         }
 
@@ -1130,7 +1167,7 @@ mod tests {
         fn try_read_regex_pattern_escaped_quote_prefixed_by_whitespace_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("h\"e\"l\"l \"o").unwrap()),
-                try_read(r#"#"h\"e\"l\"l \"o""#).ok().unwrap().1
+                try_read(r#"#"h\"e\"l\"l \"o""#).ok().unwrap().1.unwrap(),
             );
         }
 
@@ -1138,7 +1175,7 @@ mod tests {
         fn try_read_regex_pattern_escaped_quote_suffixed_by_whitespace_test() {
             assert_eq!(
                 Value::Pattern(regex::Regex::new("h\"e\"l\" l \"o").unwrap()),
-                try_read(r#"#"h\"e\"l\" l \"o" something"#).ok().unwrap().1
+                try_read(r#"#"h\"e\"l\" l \"o" something"#).ok().unwrap().1.unwrap(),
             );
         }
     }
