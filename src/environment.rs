@@ -524,9 +524,9 @@ impl Environment {
         // Read in clojure.core
         //
         // @TODO its time for a RT (runtime), which environment seems to be becoming
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
+        let _ = Repl::new(Rc::clone(&environment)).eval_str(include_str!("clojure/core.clj"));
         // TODO: should read into namespace if (ns ..) is given in source file
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
+        let _ = Repl::new(Rc::clone(&environment)).eval_str(include_str!("clojure/string.clj"));
 
         // We can add this back once we have requires
         // environment.change_or_create_namespace(Symbol::intern("user"));

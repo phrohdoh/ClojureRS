@@ -23,6 +23,8 @@ impl ToValue for LoadFileFn {
 }
 impl IFn for LoadFileFn {
     fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
+        unimplemented!("(load-file ,,,) unsupported, todo: wasm (stdio)");
+        /*
         if args.len() != 1 {
             Value::Condition(format!(
                 "Wrong number of arguments given to function (Given: {}, Expected: 1)",
@@ -40,5 +42,6 @@ impl IFn for LoadFileFn {
                 args.len()
             ))
         }
+        */
     }
 }
