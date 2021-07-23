@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::fs::File;
 use std::io::Read;
 
-use reqwest;
+// use reqwest;
 use url::Url;
 
 use crate::error_message;
@@ -30,6 +30,8 @@ impl ToValue for SlurpFn {
 
 impl IFn for SlurpFn {
     fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
+        unimplemented!("(slurp ,,,) not supported (reqwest)");
+        /*
         if !args.is_empty() {
             let first_arg = &args.into_iter().next().unwrap().to_string();
 
@@ -62,5 +64,6 @@ impl IFn for SlurpFn {
         } else {
             Value::Nil
         }
+        */
     }
 }

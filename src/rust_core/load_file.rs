@@ -23,8 +23,6 @@ impl ToValue for LoadFileFn {
 }
 impl IFn for LoadFileFn {
     fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
-        unimplemented!("(load-file ,,,) unsupported, todo: wasm (stdio)");
-        /*
         if args.len() != 1 {
             Value::Condition(format!(
                 "Wrong number of arguments given to function (Given: {}, Expected: 1)",
@@ -32,7 +30,7 @@ impl IFn for LoadFileFn {
             ))
         } else if let Value::String(file) = &**args.get(0).unwrap() {
             // @TODO clean this
-            Repl::new(Rc::clone(&self.enclosing_environment)).try_eval_file(file);
+            let _ = Repl::new(Rc::clone(&self.enclosing_environment)).try_eval_file(file);
             //@TODO remove this placeholder value, return last value evaluated in try_eval_file
             Value::Nil
         } else {
@@ -42,6 +40,5 @@ impl IFn for LoadFileFn {
                 args.len()
             ))
         }
-        */
     }
 }

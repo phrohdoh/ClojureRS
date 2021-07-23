@@ -33,8 +33,6 @@ impl Repl {
         Repl::read(&mut string.as_bytes())
     }
     pub fn run(&self) {
-        unimplemented!("todo: wasi (stdio)");
-        /*
         let stdin = io::stdin();
 
         loop {
@@ -54,7 +52,6 @@ impl Repl {
             println!("{}", evaled_next);
             // Loop
         }
-        */
     }
     //
     // Will possibly just add this to our environment, or turn this into a parallel of clojure.lang.RT
