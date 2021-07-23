@@ -32,17 +32,21 @@ impl Repl {
     pub fn read_string(string: &str) -> Value {
         Repl::read(&mut string.as_bytes())
     }
-    pub fn run(&self) {
-        let stdin = io::stdin();
-
+    pub fn run<I, O>(
+        &self,
+        mut input: I,
+        mut output: O,
+    ) where
+        I: std::io::BufRead,
+        O: std::io::Write,
+    {
         loop {
-            print!("{}=> ", self.environment.get_current_namespace_name());
-            let _ = io::stdout().flush();
+            let _ = write!(&mut output, "{}=> ", self.environment.get_current_namespace_name());
+            let _ = output.flush();
 
             let next = {
-                let mut stdin_reader = stdin.lock();
                 // Read
-                let next = Repl::read(&mut stdin_reader);
+                let next = Repl::read(&mut input);
 
                 match &next {
                     Value::Keyword(kw) => match kw.namespace() {
@@ -53,7 +57,6 @@ impl Repl {
                 }
 
                 next
-                // Release stdin.lock
             };
 
             // Eval
@@ -69,19 +72,25 @@ impl Repl {
     /// Reads the code in a file sequentially and evaluates the result
     pub fn try_eval_file(&self, filepath: &str) -> Result<Value, std::io::Error> {
         let core = File::open(filepath)?;
-        let mut reader = BufReader::new(core);
+        let reader = BufReader::new(core);
+        Ok(self.eval_readable(reader))
+    }
+    pub fn eval_file(&self, filepath: &str) -> Value {
+        self.try_eval_file(filepath).to_value()
+    }
 
-        let mut last_val = Repl::read(&mut reader);
+    /// Reads code sequentially and evaluates the result, returning the last value
+    pub fn eval_readable<R: BufRead>(&self, mut r: R) -> Value {
+        let mut last_val = Repl::read(&mut r);
         loop {
             // @TODO this is hardcoded until we refactor Conditions to have keys, so that
             //       we can properly identify them
             // @FIXME
             if let Value::Condition(cond) = &last_val {
                 if cond != "Tried to read empty stream; unexpected EOF" {
-                    println!("Error reading file: {}", cond);
+                    println!("Error reading string: {}", cond);
                 }
-
-                return Ok(last_val);
+                return last_val;
             }
 
             let evaled_last_val = self.eval(&last_val);
@@ -90,11 +99,11 @@ impl Repl {
                 println!("{}", cond);
             }
 
-            last_val = Repl::read(&mut reader);
+            last_val = Repl::read(&mut r);
         }
     }
-    pub fn eval_file(&self, filepath: &str) -> Value {
-        self.try_eval_file(filepath).to_value()
+    pub fn eval_str(&self, s: &str) -> Value {
+        self.eval_readable(s.as_bytes())
     }
 }
 
