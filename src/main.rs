@@ -1,37 +1,8 @@
-#[macro_use]
-extern crate nom;
-extern crate itertools;
+use rust_clojure::{
+    user_action,
+    repl,
+};
 
-#[macro_use]
-mod persistent_list_map;
-#[macro_use]
-mod persistent_list;
-#[macro_use]
-mod protocol;
-#[macro_use]
-mod symbol;
-#[macro_use]
-mod var;
-mod clojure_std;
-mod clojure_string;
-mod environment;
-mod error_message;
-mod ifn;
-mod iterable;
-mod keyword;
-mod lambda;
-mod maps;
-mod namespace;
-mod persistent_vector;
-mod reader;
-mod repl;
-mod rust_core;
-mod type_tag;
-mod user_action;
-mod util;
-mod value;
-mod protocols;
-mod traits;
 fn main() {
     let cli_args: user_action::Action = user_action::parse_args(std::env::args().collect());
 
