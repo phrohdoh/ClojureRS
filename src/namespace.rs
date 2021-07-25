@@ -16,7 +16,7 @@ use std::rc::Rc;
 /// (ns cats (:require [dogs :refer :all] [chickens :refer [a b c]))`
 /// ```
 /// =>
-/// ```
+/// ```no_check
 /// Refers {
 ///    refers: [
 ///        Symbol::intern("clojure.core"),
@@ -26,7 +26,7 @@ use std::rc::Rc;
 ///        Symbol::intern("chickens") : [ Symbol::intern("a"),..,Symbol::intern("c")]
 ///    }
 /// }
-/// ``
+/// ```
 /// Refer functions are immutable, designed to return new, refined Refers altogether
 /// (with the idea being Refers aren't really these changing things,  the idea is to
 /// declare them and move on, even if, for whatever reason, you declare them in multiple passes like)
@@ -395,20 +395,20 @@ impl Namespaces {
 
     /// Get value of sym in namespace
     /// Note;
-    /// ```
+    /// ```clojure
     ///  get('clojure.core,'+)
     /// ```
     /// Will be asking what '+ means in 'clojure.core, so
     /// this will only return a value if there is a 'clojure.core/+
     /// But
-    /// ```
+    /// ```clojure
     /// get('clojure.core, 'clojure.other/+)
     /// ```
     /// Will always mean the same thing, no matter what namespace we're in; it will mean
     /// the value '+ belonging to clojure.other,  the namespace you're in is irrelevant
     ///
     /// Finally,
-    /// ```
+    /// ```clojure
     /// get('clojure.core, 'shortcut/+)
     /// ```
     /// Will depend on what shortcut expands to in clojure.core (assuming shortcut is not an actual namespace here)
