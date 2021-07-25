@@ -104,3 +104,6 @@ pub use self::load_file::*;
 
 pub(crate) mod equals;
 pub use self::equals::*;
+
+pub(crate) mod r#type;
+pub use self::r#type::*;
