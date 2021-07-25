@@ -42,7 +42,17 @@ impl Repl {
             let next = {
                 let mut stdin_reader = stdin.lock();
                 // Read
-                Repl::read(&mut stdin_reader)
+                let next = Repl::read(&mut stdin_reader);
+
+                match &next {
+                    Value::Keyword(kw) => match kw.namespace() {
+                        Some(ns) if ns == "repl" && kw.name() == "quit" => break,
+                        _ => {},
+                    },
+                    _ => {},
+                }
+
+                next
                 // Release stdin.lock
             };
 
