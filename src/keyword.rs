@@ -11,6 +11,9 @@ impl Keyword {
     pub fn name(&self) -> &str {
         self.sym.name()
     }
+    pub fn namespace(&self) -> Option<&str> {
+        self.sym.namespace()
+    }
     pub fn intern(name: &str) -> Keyword {
         Keyword {
             sym: Symbol::intern(name),
@@ -27,10 +30,9 @@ impl Keyword {
 }
 impl fmt::Display for Keyword {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.sym.ns != "" {
-            write!(f, ":{}/{}", self.sym.ns, self.sym.name)
-        } else {
-            write!(f, ":{}", self.sym.name)
+        match (self.namespace(), self.name()) {
+            (Some(ns), n) => write!(f, ":{}/{}", ns, n),
+            (_, n) => write!(f, ":{}", n),
         }
     }
 }
