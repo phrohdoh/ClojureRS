@@ -224,23 +224,21 @@ impl Environment {
             MainEnvironment(env_val) => {
                 // If we've recieved a qualified symbol like
                 // clojure.core/+
-                if sym.has_ns() {
-                    // Use that namespace
-                    env_val.get_var_from_namespace(&Symbol::intern(&sym.ns), sym)
-                } else {
-                    env_val.get_var_from_namespace(
-                        &env_val.get_current_namespace(),
-                        &Symbol::intern(&sym.name),
-                    )
+                match sym.namespace() {
+                    Some(ns) => env_val.get_var_from_namespace(&Symbol::intern(ns), sym),
+                    _ => env_val.get_var_from_namespace(
+                            &env_val.get_current_namespace(),
+                            &Symbol::intern(&sym.name),
+                        ),
                 }
             }
             LocalEnvironment(parent_env, mappings) => {
-                if sym.ns != "" {
-                    return self.get_main_environment().get(sym);
-                }
-                match mappings.borrow().get(sym) {
-                    Some(val) => Rc::clone(val),
-                    None => parent_env.get(sym),
+                match sym.namespace() {
+                    Some(ns) => self.get_main_environment().get(sym),
+                    _ => match mappings.borrow().get(sym) {
+                        Some(val) => Rc::clone(val),
+                        _ => parent_env.get(sym),
+                    }
                 }
             }
         }
@@ -254,20 +252,19 @@ impl Environment {
             MainEnvironment(env_val) => {
                 // If we've recieved a qualified symbol like
                 // clojure.core/+
-                if sym.has_ns() {
-                    // Use that namespace
-                    env_val.get_from_namespace(&Symbol::intern(&sym.ns), sym)
-                } else {
-                    env_val.get_from_namespace(&env_val.get_current_namespace(), &sym)
+                match sym.namespace() {
+                    Some(ns) => env_val.get_from_namespace(&Symbol::intern(ns), sym), // Use that namespace
+                    _ => env_val.get_from_namespace(&env_val.get_current_namespace(), &sym),
                 }
             }
             LocalEnvironment(parent_env, mappings) => {
-                if sym.ns != "" {
-                    return self.get_main_environment().get(sym);
-                }
-                match mappings.borrow().get(sym) {
-                    Some(val) => Rc::clone(val),
-                    None => parent_env.get(sym),
+                if sym.has_ns() {
+                    self.get_main_environment().get(sym)
+                } else {
+                    match mappings.borrow().get(sym) {
+                        Some(val) => Rc::clone(val),
+                        _ => parent_env.get(sym),
+                    }
                 }
             }
         }

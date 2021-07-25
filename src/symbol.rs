@@ -6,13 +6,7 @@ use std::hash::{Hash, Hasher};
 #[derive(Eq, Clone, Debug)]
 pub struct Symbol {
     pub name: String,
-    // @TODO Should this be an optional string?
-    //       on one hand, playing with this is closer to the original,
-    //       and slightly easier to read and understand (for me).
-    //       But you might say it doesn't force you to cover the None
-    //       route, the sort of invariants ADTs are good at.
-    //       Most likely, we will reimplement this as Option<String>
-    pub ns: String,
+    pub ns: Option<String>,
     pub meta: PersistentListMap,
 }
 macro_rules! sym {
@@ -22,12 +16,12 @@ macro_rules! sym {
 }
 impl Hash for Symbol {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&self.name,&self.ns).hash(state);
+        (&self.name,self.ns.as_ref()).hash(state);
     }
 }
 impl Symbol {
     pub fn intern(name: &str) -> Symbol {
-        let mut ns = "";
+        let mut ns = None;
         let mut name = name;
         // @TODO See if we will have any problems with manipulating
         //       text in other languages
@@ -44,30 +38,40 @@ impl Symbol {
 
             // support interning of the symbol '/' for division
             if ind > 0 || name.len() > 1 {
-                ns = &name[..ind];
+                let ns_name = &name[..ind];
+                if !ns_name.is_empty() {
+                    ns = Some(ns_name);
+                }
                 name = &name[ind + 1..];
             }
         }
-        Symbol::intern_with_ns(ns, name)
+        match ns {
+            Some(ns) => Symbol::intern_with_ns(ns, name),
+            _ => Symbol::intern_(name),
+        }
     }
     pub fn intern_with_ns(ns: &str, name: &str) -> Symbol {
+        // assert!(ns.len() > 0);
         Symbol {
             name: String::from(name),
-            ns: String::from(ns),
+            ns: if ns.is_empty() { None } else { String::from(ns).into() },
             meta: PersistentListMap::Empty,
         }
     }
     pub fn unqualified(&self) -> Symbol {
         // So we can keep the same meta 
         let mut retval = self.clone();
-        retval.ns = String::from("");
+        retval.ns = None;
         retval
     }
     pub fn has_ns(&self) -> bool {
-        self.ns != ""
+        self.namespace().is_some()
     }
     pub fn name(&self) -> &str {
         &self.name
+    }
+    pub fn namespace(&self) -> Option<&str> {
+        self.ns.as_ref().map(|x| x.as_str())
     }
     // @TODO use IPersistentMap instead perhaps 
     pub fn meta(&self) -> PersistentListMap {
@@ -78,6 +82,13 @@ impl Symbol {
             name: self.name.clone(), // String::from(self.name.clone()),
             ns: self.ns.clone(),        // String::from(self.ns.clone()),
             meta,
+        }
+    }
+    fn intern_(name: &str) -> Self {
+        Self {
+            name: String::from(name),
+            ns: None,
+            meta: PersistentListMap::Empty,
         }
     }
 }
@@ -99,10 +110,9 @@ impl traits::IObj for Symbol {
 }
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.has_ns() {
-            write!(f, "{}/{}", self.ns, self.name)
-        } else {
-            write!(f, "{}", self.name)
+        match &self.ns {
+            Some(ns) => write!(f, "{}/{}", ns, self.name),
+            _ => write!(f, "{}", self.name),
         }
     }
 }
@@ -123,7 +133,7 @@ mod tests {
             assert_eq!(
                 Symbol::intern("a"),
                 Symbol {
-                    ns: String::from(""),
+                    ns: None,
                     name: String::from("a"),
                     meta: PersistentListMap::Empty,
                 }
@@ -135,15 +145,7 @@ mod tests {
             assert_eq!(
                 Symbol::intern_with_ns("clojure.core", "a"),
                 Symbol {
-                    ns: String::from("clojure.core"),
-                    name: String::from("a"),
-                    meta: PersistentListMap::Empty
-                }
-            );
-            assert_eq!(
-                Symbol::intern_with_ns("", "a"),
-                Symbol {
-                    ns: String::from(""),
+                    ns: String::from("clojure.core").into(),
                     name: String::from("a"),
                     meta: PersistentListMap::Empty
                 }
@@ -151,7 +153,7 @@ mod tests {
             assert_eq!(
                 Symbol::intern("a"),
                 Symbol {
-                    ns: String::from(""),
+                    ns: None,
                     name: String::from("a"),
                     meta: PersistentListMap::Empty
                 }
@@ -159,7 +161,7 @@ mod tests {
             assert_eq!(
                 Symbol::intern("clojure.core/a"),
                 Symbol {
-                    ns: String::from("clojure.core"),
+                    ns: String::from("clojure.core").into(),
                     name: String::from("a"),
                     meta: PersistentListMap::Empty
                 }
@@ -167,7 +169,7 @@ mod tests {
             assert_eq!(
                 Symbol::intern("clojure/a"),
                 Symbol {
-                    ns: String::from("clojure"),
+                    ns: String::from("clojure").into(),
                     name: String::from("a"),
                     meta: PersistentListMap::Empty,
                 }
@@ -175,7 +177,7 @@ mod tests {
             assert_eq!(
                 Symbol::intern("/a"),
                 Symbol {
-                    ns: String::from(""),
+                    ns: None,
                     name: String::from("a"),
                     meta: PersistentListMap::Empty,
                 }
@@ -191,7 +193,7 @@ mod tests {
                     persistent_list_map!(map_entry!("key", "value"))
                 ),
                 Symbol {
-                    ns: String::from("namespace"),
+                    ns: String::from("namespace").into(),
                     name: String::from("name"),
                     meta: persistent_list_map!(map_entry!("key", "value"))
                 }
@@ -207,7 +209,7 @@ mod tests {
                     )
                 ),
                 Symbol {
-                    ns: String::from("namespace"),
+                    ns: String::from("namespace").into(),
                     name: String::from("name"),
                     meta: conj!(
                         PersistentListMap::Empty,

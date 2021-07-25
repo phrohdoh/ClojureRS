@@ -272,13 +272,10 @@ impl Namespaces {
     /// Insert a binding (sym = val) *into* namespace (namespace)
     /// If namespace doesn't exist, create it
     pub fn insert_into_namespace(&self, namespace_sym: &Symbol, sym: &Symbol, val: Rc<Value>) {
-        let mut namespace_sym = &namespace_sym.unqualified();
-        // We will only use this if ns isn't ""
-        let symbol_namespace_sym = Symbol::intern(&sym.ns);
-
-        if sym.has_ns() {
-            namespace_sym = &symbol_namespace_sym;
-        }
+        let namespace_sym = &match sym.namespace() {
+            Some(ns) => Symbol::intern(ns),
+            _ => namespace_sym.unqualified(),
+        };
 
         let namespaces = self.0.borrow();
         let namespace = namespaces.get(namespace_sym);
@@ -303,8 +300,8 @@ impl Namespaces {
 
         // @TODO just make it an Optional<String>
         // If our sym is namespace qualified,  use that as our namespace
-        if sym.has_ns() {
-            namespace_sym = Symbol::intern(&sym.ns);
+        if let Some(sym_ns) = sym.namespace() {
+            namespace_sym = Symbol::intern(sym_ns);
         }
 
         let sym = sym.unqualified();
@@ -327,9 +324,9 @@ impl Namespaces {
         let mut grabbing_from_namespace_directly = false;
 
         // If our sym is namespace qualified,  use that as our namespace
-        if sym.has_ns() {
+        if let Some(sym_ns) = sym.namespace() {
             grabbing_from_namespace_directly = true;
-            namespace_sym = Symbol::intern(&sym.ns);
+            namespace_sym = Symbol::intern(sym_ns);
         }
 
         let sym = sym.unqualified();
