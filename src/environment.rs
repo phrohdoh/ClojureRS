@@ -270,7 +270,7 @@ impl Environment {
         }
     }
 
-    pub fn populate_with_clojure_core(environment: Rc<Environment>) {
+    pub fn populate_with_clojure_core(env: Rc<Environment>) {
         // Register our macros / functions ahead of time
         let add_fn = rust_core::AddFn {};
         let subtract_fn = rust_core::SubtractFn {};
@@ -331,202 +331,117 @@ impl Environment {
 
         let equals_fn = rust_core::EqualsFn {};
         let type_fn = rust_core::TypeFn {};
-        let eval_fn = rust_core::EvalFn::new(Rc::clone(&environment));
-        let ns_macro = rust_core::NsMacro::new(Rc::clone(&environment));
-        let load_file_fn = rust_core::LoadFileFn::new(Rc::clone(&environment));
-        let refer_fn = rust_core::ReferFn::new(Rc::clone(&environment));
-        let meta_fn = rust_core::MetaFn::new(Rc::clone(&environment));
-        let with_meta_fn = rust_core::WithMetaFn::new(Rc::clone(&environment));
-        let var_fn = rust_core::special_form::VarFn::new(Rc::clone(&environment));
+        let eval_fn = rust_core::EvalFn::new(Rc::clone(&env));
+        let ns_macro = rust_core::NsMacro::new(Rc::clone(&env));
+        let load_file_fn = rust_core::LoadFileFn::new(Rc::clone(&env));
+        let refer_fn = rust_core::ReferFn::new(Rc::clone(&env));
+        let meta_fn = rust_core::MetaFn::new(Rc::clone(&env));
+        let with_meta_fn = rust_core::WithMetaFn::new(Rc::clone(&env));
+        let var_fn = rust_core::special_form::VarFn::new(Rc::clone(&env));
         let count_fn = rust_core::count::CountFn {};
         let lt_fn = rust_core::lt::LtFn {};
         let gt_fn = rust_core::gt::GtFn {};
         let lte_fn = rust_core::lte::LteFn {};
         let gte_fn = rust_core::gte::GteFn {};
-        // @TODO after we merge this with all the other commits we have,
-        //       just change all the `insert`s here to use insert_in_namespace
-        //       I prefer explicity and the non-dependence-on-environmental-factors
-        environment.change_or_create_namespace(&Symbol::intern("clojure.core"));
 
-        environment.insert(Symbol::intern("+"), add_fn.to_rc_value());
-        environment.insert(Symbol::intern("-"), subtract_fn.to_rc_value());
-        environment.insert(Symbol::intern("*"), multiply_fn.to_rc_value());
-        environment.insert(Symbol::intern("/"), divide_fn.to_rc_value());
-        environment.insert(Symbol::intern("rem"), rem_fn.to_rc_value());
-        environment.insert(Symbol::intern("rand"), rand_fn.to_rc_value());
-        environment.insert(Symbol::intern("rand-int"), rand_int_fn.to_rc_value());
-        environment.insert(Symbol::intern("let"), let_macro.to_rc_value());
-        environment.insert(Symbol::intern("str"), str_fn.to_rc_value());
-        environment.insert(Symbol::intern("quote"), quote_macro.to_rc_value());
-        environment.insert(Symbol::intern("def"), def_macro.to_rc_value());
-        environment.insert(Symbol::intern("fn"), fn_macro.to_rc_value());
-        environment.insert(Symbol::intern("defmacro"), defmacro_macro.to_rc_value());
-        environment.insert(Symbol::intern("eval"), eval_fn.to_rc_value());
-        environment.insert(Symbol::intern("meta"), meta_fn.to_rc_value());
-        environment.insert(Symbol::intern("with-meta"), with_meta_fn.to_rc_value());
-        environment.insert(Symbol::intern("var-fn*"), var_fn.to_rc_value());
+        env.change_or_create_namespace(&Symbol::intern("clojure.core"));
 
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.core"),
-            Symbol::intern("count"),
-            count_fn.to_rc_value(),
+        macro_rules! insert_into_ns {
+            ($ns:literal,$($sym:literal,$val:expr),*) => {
+                $(
+                    env.insert_into_namespace(
+                        &$crate::symbol::Symbol::intern($ns),
+                        $crate::symbol::Symbol::intern($sym),
+                        $crate::value::ToValue::to_rc_value($val),
+                    );
+                )*
+            };
+        }
+
+        insert_into_ns!("clojure.core",
+            "+",            &add_fn,
+            "-",            &subtract_fn,
+            "*",            &multiply_fn,
+            "/",            &divide_fn,
+            "rem",          &rem_fn,
+            "rand",         &rand_fn,
+            "rand-int",     &rand_int_fn,
+            "let",          &let_macro,
+            "str",          &str_fn,
+            "quote",        &quote_macro,
+            "def",          &def_macro,
+            "fn",           &fn_macro,
+            "defmacro",     &defmacro_macro,
+            "eval",         &eval_fn,
+            "meta",         &meta_fn,
+            "with-meta",    &with_meta_fn,
+            "var-fn*",      &var_fn,
+            "count",        &count_fn,
+            "quote",        &quote_macro,
+            "do-fn*",       &do_fn,
+            "do",           &do_macro,
+            "def",          &def_macro,
+            "if",           &if_macro,
+            "ns",           &ns_macro,
+            "lexical-eval", &lexical_eval_fn,
+            "load-file",    &load_file_fn,
+            "nth",          &nth_fn,
+            "assoc",        &assoc_fn,
+            "get",          &get_fn,
+            "map",          &map_fn,
+            "concat",       &concat_fn,
+            "more",         &more_fn,
+            "first",        &first_fn,
+            "second",       &second_fn,
+            "=",            &equals_fn,
+            "type",         &type_fn,
+            "refer",        &refer_fn,
+            // input and output
+            "system-newline", &system_newline_fn,
+            "flush-stdout",   &flush_stdout_fn,
+            "print-string",   &print_string_fn,
+            "read-line",      &read_line_fn,
+            // core.clj wraps calls to the rust implementations
+            // @TODO add this to clojure.rs.core namespace as clojure.rs.core/slurp
+            "rust-slurp", &slurp_fn,
+            // interop to read real clojure.core
+            "lt",  &lt_fn,
+            "gt",  &gt_fn,
+            "lte", &lte_fn,
+            "gte", &gte_fn
         );
 
-        // Interop to read real clojure.core
-        environment.insert(Symbol::intern("lt"),lt_fn.to_rc_value());
+        insert_into_ns!("Thread",
+            "sleep", &thread_sleep_fn);
 
-        environment.insert(Symbol::intern("gt"),gt_fn.to_rc_value());
-        environment.insert(Symbol::intern("lte"),lte_fn.to_rc_value());
-
-        environment.insert(Symbol::intern("gte"),gte_fn.to_rc_value());
-
-        // Thread namespace
-        environment.insert_into_namespace(
-            &Symbol::intern("Thread"),
-            Symbol::intern("sleep"),
-            thread_sleep_fn.to_rc_value(),
+        insert_into_ns!("System",
+            "nanoTime", &nanotime_fn,
+            "getenv", &get_env_fn
         );
 
-        // System namespace
-        environment.insert_into_namespace(
-            &Symbol::intern("System"),
-            Symbol::intern("nanoTime"),
-            nanotime_fn.to_rc_value(),
+        insert_into_ns!("clojure.string",
+            "reverse",      &reverse_fn,
+            "join",         &join_fn,
+            "blank?",       &blank_fn,
+            "upper-case",   &upper_case_fn,
+            "lower-case",   &lower_case_fn,
+            "starts-with?", &starts_with_fn,
+            "ends-with?",   &ends_with_fn,
+            "includes?",    &includes_fn,
+            "trim",         &trim_fn,
+            "triml",        &triml_fn,
+            "trimr",        &trimr_fn,
+            "trim-newline", &trim_newline_fn,
+            "split",        &split_fn
         );
-        environment.insert_into_namespace(
-            &Symbol::intern("System"),
-            Symbol::intern("getenv"),
-            get_env_fn.to_rc_value(),
-        );
-
-        // core.clj wraps calls to the rust implementations
-        // @TODO add this to clojure.rs.core namespace as clojure.rs.core/slurp
-        environment.insert(Symbol::intern("rust-slurp"), slurp_fn.to_rc_value());
-
-        // clojure.string
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("reverse"),
-            reverse_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("join"),
-            join_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("blank?"),
-            blank_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("upper-case"),
-            upper_case_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("lower-case"),
-            lower_case_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("starts-with?"),
-            starts_with_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("ends-with?"),
-            ends_with_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("includes?"),
-            includes_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("trim"),
-            trim_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("triml"),
-            triml_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("trimr"),
-            trimr_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("trim-newline"),
-            trim_newline_fn.to_rc_value(),
-        );
-
-        environment.insert_into_namespace(
-            &Symbol::intern("clojure.string"),
-            Symbol::intern("split"),
-            split_fn.to_rc_value(),
-        );
-
-        environment.insert(Symbol::intern("quote"), quote_macro.to_rc_value());
-        environment.insert(Symbol::intern("do-fn*"), do_fn.to_rc_value());
-        environment.insert(Symbol::intern("do"), do_macro.to_rc_value());
-        environment.insert(Symbol::intern("def"), def_macro.to_rc_value());
-        environment.insert(Symbol::intern("if"), if_macro.to_rc_value());
-        environment.insert(Symbol::intern("ns"), ns_macro.to_rc_value());
-        environment.insert(
-            Symbol::intern("lexical-eval"),
-            lexical_eval_fn.to_rc_value(),
-        );
-        environment.insert(Symbol::intern("load-file"), load_file_fn.to_rc_value());
-        environment.insert(Symbol::intern("nth"), nth_fn.to_rc_value());
-        environment.insert(Symbol::intern("assoc"), assoc_fn.to_rc_value());
-        environment.insert(Symbol::intern("get"), get_fn.to_rc_value());
-        environment.insert(Symbol::intern("map"), map_fn.to_rc_value());
-        environment.insert(Symbol::intern("concat"), concat_fn.to_rc_value());
-        environment.insert(Symbol::intern("more"), more_fn.to_rc_value());
-        environment.insert(Symbol::intern("first"), first_fn.to_rc_value());
-        environment.insert(Symbol::intern("second"), second_fn.to_rc_value());
-        // input and output
-        environment.insert(
-            Symbol::intern("system-newline"),
-            system_newline_fn.to_rc_value(),
-        );
-        environment.insert(
-            Symbol::intern("flush-stdout"),
-            flush_stdout_fn.to_rc_value(),
-        );
-        environment.insert(
-            Symbol::intern("print-string"),
-            print_string_fn.to_rc_value(),
-        );
-        environment.insert(Symbol::intern("read-line"), read_line_fn.to_rc_value());
-
-        environment.insert(Symbol::intern("="), equals_fn.to_rc_value());
-        environment.insert(Symbol::intern("type"), type_fn.to_rc_value());
-        environment.insert(Symbol::intern("refer"), refer_fn.to_rc_value());
 
         //
         // Read in clojure.core
         //
         // @TODO its time for a RT (runtime), which environment seems to be becoming
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
+        let _ = Repl::new(Rc::clone(&env)).try_eval_file("./src/clojure/core.clj");
         // TODO: should read into namespace if (ns ..) is given in source file
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
+        let _ = Repl::new(Rc::clone(&env)).try_eval_file("./src/clojure/string.clj");
     }
 
     pub fn clojure_core_environment() -> Rc<Environment> {
