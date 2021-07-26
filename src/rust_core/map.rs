@@ -19,22 +19,34 @@ impl ToValue for MapFn {
 }
 impl IFn for MapFn {
     fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
-        if args.is_empty() {
-            return error_message::wrong_arg_count(1, args.len());
+        if args.len() != 2 {
+            return error_message::wrong_arg_count(2, args.len());
         }
-        if let Value::IFn(ifn) = &**args.get(0).unwrap() {
-            if let Some(iterable) = args.get(1).unwrap().try_as_protocol::<Iterable>() {
-                return iterable
+        let ifn_val = &**args.get(0).unwrap();
+        let iterable_rc_val = args.get(1).unwrap();
+        let iterable = iterable_rc_val.try_as_protocol::<Iterable>();
+        match (ifn_val, iterable) {
+            // @TODO first arg can be any callable, not necessarily a "function"
+            (Value::IFn(ifn), Some(iterable)) => {
+                iterable
                     .iter()
                     .map(|rc_val| Rc::new(ifn.invoke(vec![rc_val])))
                     .collect::<PersistentList>()
-                    .to_value();
+                    .to_value()
+            }
+            (_, None) => {
+                Value::Condition(format!(
+                    "Type mismatch; Expected iterable type, Recieved type {}",
+                    iterable_rc_val.as_ref().type_tag(),
+                ))
+            }
+            _ => {
+                Value::Condition(format!(
+                    "Type mismatch; Expected instance of {}, Recieved type {}",
+                    TypeTag::IFn,
+                    ifn_val.type_tag(),
+                ))
             }
         }
-        Value::Condition(format!(
-            "Type mismatch; Expected instance of {}, Recieved type {}",
-            TypeTag::IFn,
-            args.len()
-        ))
     }
 }
