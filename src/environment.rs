@@ -133,6 +133,7 @@ impl Environment {
         match self.get_main_environment() {
             MainEnvironment(env_val) => {
                 let namespace_sym = self.get_current_namespace();
+                eprintln!("adding ref to {{ns:{}}} in {{ns:{}}}", referred_namespace_sym, namespace_sym);
                 env_val.add_referred_namespace(&namespace_sym, referred_namespace_sym);
             }
             LocalEnvironment(..) => panic!(

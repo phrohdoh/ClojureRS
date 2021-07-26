@@ -260,13 +260,11 @@ impl Namespaces {
     /// Insert a new namespace of name (sym)
     pub fn has_namespace(&self, namespace_sym: &Symbol) -> bool {
         let namespace_sym = namespace_sym.unqualified();
-
         let namespaces = self.0.borrow();
         let namespace = namespaces.get(&namespace_sym);
-        match namespace {
-            Some(_) => true,
-            None => false,
-        }
+        let ret = namespace.is_some();
+        eprintln!("Namespaces::has_namespace(\"{}\") -> {}", namespace_sym, ret);
+        ret
     }
 
     /// Insert a binding (sym = val) *into* namespace (namespace)
