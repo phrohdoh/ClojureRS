@@ -179,7 +179,7 @@ impl Environment {
         LocalEnvironment(outer_environment, RefCell::new(HashMap::new()))
     }
     /// Insert a binding into an arbitrary namespace
-    fn insert_into_namespace(&self, namespace: &Symbol, sym: Symbol, val: Rc<Value>) {
+    pub fn insert_into_namespace(&self, namespace: &Symbol, sym: Symbol, val: Rc<Value>) {
         match self.get_main_environment() {
             MainEnvironment(env_val) => env_val.insert_into_namespace(namespace, sym, val),
             LocalEnvironment(..) => panic!(
