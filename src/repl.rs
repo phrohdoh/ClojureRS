@@ -84,12 +84,11 @@ impl Repl {
                 // Read
                 let next = Repl::read(&mut input);
 
-                match &next {
-                    Value::Keyword(kw) => match kw.namespace() {
-                        Some(ns) if ns == "repl" && kw.name() == "quit" => break,
-                        _ => {},
-                    },
-                    _ => {},
+                if_chain::if_chain! {
+                    if let Value::Keyword(kw) = &next;
+                    if let Some("repl") = kw.namespace();
+                    if kw.name() == "quit";
+                    then { break }
                 }
 
                 next
