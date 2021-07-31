@@ -188,7 +188,7 @@ impl Namespace {
     pub fn get_var(&self, sym: &Symbol) -> Rc<Value> {
         match self.mappings.borrow_mut().get(&sym.unqualified()).map(|var| var.clone()) {
             Some(var) => Rc::new(Value::Var(var)),
-            None => Rc::new(Value::Condition(format!("Undefined symbol {}", sym.name))),
+            None => Rc::new(Value::Condition(format!("Undefined symbol {}", sym))),
         }
     }
 
@@ -202,7 +202,7 @@ impl Namespace {
     pub fn get(&self, sym: &Symbol) -> Rc<Value> {
         match self.try_get(sym) {
             Some(val) => val,
-            None => Rc::new(Value::Condition(format!("Undefined symbol {}", sym.name))),
+            None => Rc::new(Value::Condition(format!("Undefined symbol {}", sym))),
         }
     }
 }
@@ -311,7 +311,7 @@ impl Namespaces {
         match namespace {
             Some(namespace) => namespace.get_var(&sym),
             // @TODO should this be a condition or nil?
-            _ => Rc::new(Value::Condition(format!("Undefined symbol {}", sym.name))),
+            _ => Rc::new(Value::Condition(format!("Undefined symbol {}", sym))),
         }
     }
     /// Like get, but slightly lower level; returns a None on failure rather than a
@@ -419,7 +419,7 @@ impl Namespaces {
         match self.try_get(namespace_sym, sym) {
             Some(val) => val,
             // @TODO should this be a condition or nil?
-            None => Rc::new(Value::Condition(format!("Undefined symbol {}", sym.name))),
+            None => Rc::new(Value::Condition(format!("Undefined symbol {}", sym))),
         }
     }
 }
