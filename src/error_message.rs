@@ -6,7 +6,7 @@ use std::fmt;
 pub fn type_mismatch(expected: TypeTag, got: &Value) -> Value {
     Value::Condition(format!(
         "Type mismatch; Expected instance of {},  Recieved type {}",
-        expected, got
+        expected, got.type_tag()
     ))
 }
 

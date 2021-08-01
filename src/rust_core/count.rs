@@ -71,7 +71,7 @@ mod tests {
             let args = vec![Rc::new(Value::Boolean(true))];
             assert_eq!(
                 Value::Condition(
-                    "Type mismatch; Expected instance of clojure.lang.ISeq,  Recieved type true"
+                    "Type mismatch; Expected instance of clojure.lang.ISeq,  Recieved type rust.std.bool"
                         .to_string()
                 ),
                 count.invoke(args)
