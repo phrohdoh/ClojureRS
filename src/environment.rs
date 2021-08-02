@@ -1,14 +1,30 @@
 use crate::clojure_std;
 use crate::clojure_string;
+use crate::error_message;
 use crate::namespace::Namespaces;
 use crate::repl::Repl;
 use crate::rust_core;
 use crate::symbol::Symbol;
+use crate::type_tag::TypeTag;
 use crate::value::{ToValue, Value};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+macro_rules! insert_into_ns {
+    ($env:expr,$ns:literal,$($sym:literal,$val:expr),+) => {
+        $(
+            $crate::environment::Environment::insert_into_namespace(
+                $env,
+                &$crate::symbol::Symbol::intern($ns),
+                $crate::symbol::Symbol::intern($sym),
+                $crate::value::ToValue::to_rc_value($val),
+            );
+        )*
+    };
+}
+
 
 // @TODO lookup naming convention
 /// Inner value of our environment
@@ -346,19 +362,7 @@ impl Environment {
 
         env.change_or_create_namespace(&Symbol::intern("clojure.core"));
 
-        macro_rules! insert_into_ns {
-            ($ns:literal,$($sym:literal,$val:expr),*) => {
-                $(
-                    env.insert_into_namespace(
-                        &$crate::symbol::Symbol::intern($ns),
-                        $crate::symbol::Symbol::intern($sym),
-                        $crate::value::ToValue::to_rc_value($val),
-                    );
-                )*
-            };
-        }
-
-        insert_into_ns!("clojure.core",
+        insert_into_ns!(&env, "clojure.core",
             "+",            &add_fn,
             "-",            &subtract_fn,
             "*",            &multiply_fn,
@@ -411,15 +415,15 @@ impl Environment {
             "gte", &gte_fn
         );
 
-        insert_into_ns!("Thread",
+        insert_into_ns!(&env, "Thread",
             "sleep", &thread_sleep_fn);
 
-        insert_into_ns!("System",
+        insert_into_ns!(&env, "System",
             "nanoTime", &nanotime_fn,
             "getenv", &get_env_fn
         );
 
-        insert_into_ns!("clojure.string",
+        insert_into_ns!(&env, "clojure.string",
             "reverse",      &reverse_fn,
             "join",         &join_fn,
             "blank?",       &blank_fn,
