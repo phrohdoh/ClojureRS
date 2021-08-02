@@ -1,12 +1,10 @@
 use std::fs::File;
-use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Write;
 
 use crate::environment::Environment;
 use crate::reader;
-use crate::value::{Evaluable, ToValue, Value};
+use crate::value::{Evaluable, Value};
 use std::rc::Rc;
 
 pub struct Repl {

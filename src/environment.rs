@@ -234,7 +234,7 @@ impl Environment {
             }
             LocalEnvironment(parent_env, mappings) => {
                 match sym.namespace() {
-                    Some(ns) => self.get_main_environment().get(sym),
+                    Some(_ns) => self.get_main_environment().get(sym),
                     _ => match mappings.borrow().get(sym) {
                         Some(val) => Rc::clone(val),
                         _ => parent_env.get(sym),

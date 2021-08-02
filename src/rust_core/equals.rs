@@ -34,6 +34,7 @@ impl IFn for EqualsFn {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::ifn::IFn;
     use crate::keyword::Keyword;

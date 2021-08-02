@@ -19,7 +19,7 @@ impl traits::IMeta for PersistentVector {
     }
 }
 impl traits::IObj for PersistentVector {
-    fn with_meta(&self,meta: PersistentListMap) -> PersistentVector {
+    fn with_meta(&self, _meta: PersistentListMap) -> PersistentVector {
         // @TODO implement
         self.clone()
     }

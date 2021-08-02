@@ -1,7 +1,6 @@
-use crate::persistent_list_map::PersistentListMap;
 use crate::symbol::Symbol;
 use crate::var::Var;
-use crate::value::{ToValue, Value};
+use crate::value::Value;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -669,7 +668,6 @@ mod tests {
         use crate::namespace::Refers;
         use crate::symbol::Symbol;
         use crate::value::Value;
-        use std::cell::RefCell;
         use std::collections::HashMap;
         use std::rc::Rc;
 

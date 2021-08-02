@@ -769,6 +769,8 @@ impl Evaluable for Value {
         self.to_rc_value().eval_to_rc(environment)
     }
 }
+
+#[cfg(test)]
 mod tests {
     use crate::keyword::Keyword;
     use crate::symbol::Symbol;
@@ -780,8 +782,8 @@ mod tests {
     use crate::environment::Environment;
     use crate::persistent_list_map::PersistentListMap;
     use crate::persistent_list_map::IPersistentMap;
-    use crate::maps::MapEntry;
     use crate::protocol::ProtocolCastable;
+
     // (def ^{:cat 1 :dog 2} a "Docstring" 1)
     // ==>
     // a with meta of {:cat 1 :dog 2 :doc "Docstring"} ?

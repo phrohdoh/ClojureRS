@@ -1,7 +1,6 @@
 use crate::environment::Environment;
 use crate::error_message;
  use crate::ifn::IFn;
-use crate::type_tag::TypeTag;
 use crate::protocol::ProtocolCastable;
 use crate::protocols;
 use crate::traits::IMeta;

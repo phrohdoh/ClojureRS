@@ -6,7 +6,6 @@ use crate::persistent_vector::PersistentVectorIter;
 use crate::persistent_vector::ToPersistentVector;
 use crate::persistent_vector::ToPersistentVectorIter;
 use crate::define_protocol;
-use crate::protocol::Protocol;
 use crate::value::ToValue;
 use crate::value::Value;
 use std::rc::Rc;
