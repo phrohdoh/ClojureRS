@@ -660,7 +660,7 @@ pub fn try_read(input: &str) -> IResult<&str, Value> {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // This is the high level read function that Clojure RS wraps
-pub fn read<R: BufRead>(reader: &mut R) -> Value {
+pub fn read<R: BufRead>(reader: &mut R) -> Option<Value> {
     // This is a buffer that will accumulate if a read requires more
     // text to make sense, such as trying to read (+ 1
     let mut input_buffer = String::new();
@@ -671,29 +671,25 @@ pub fn read<R: BufRead>(reader: &mut R) -> Value {
         let maybe_line = reader.by_ref().lines().next();
 
         match maybe_line {
-            Some(Err(e)) => return Value::Condition(format!("Reader error: {}", e)),
+            Some(Err(e)) => return Some(Value::Condition(format!("Reader error: {}", e))),
             // `lines` does not include \n,  but \n is part of the whitespace given to the reader
             // (and is important for reading comments) so we will push a newline as well
             Some(Ok(line)) => {
                 input_buffer.push_str(&line);
                 input_buffer.push_str("\n");
             }
-            None => {
-                return Value::Condition(String::from("Tried to read empty stream; unexpected EOF"))
-            }
+            None => return None,
         }
 
         let line_read = try_read(&input_buffer);
         match line_read {
-            Ok((_, value)) => return value,
+            Ok((_, value)) => return Some(value),
             // Continue accumulating more input
             Err(Incomplete(_)) => continue,
-            Err(err) => {
-                return Value::Condition(format!(
-                    "Reader Error: could not read next form; {:?}",
-                    err
-                ))
-            }
+            Err(err) => return Some(Value::Condition(format!(
+                "Reader Error: could not read next form; {:?}",
+                err,
+            ))),
         }
     }
 }

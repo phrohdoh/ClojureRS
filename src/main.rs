@@ -17,14 +17,17 @@ fn main() {
 fn act(repl: &Repl, a: Action) {
     match a {
         // eval the file/script
-        Action::RunScript(script) => {
-           println!("{}", Repl::eval_file(&repl, script.as_str()));
+        Action::RunScript(script_filepath) => {
+            if let Some(val) = repl.eval_file(script_filepath.as_str()) {
+                println!("{}", val);
+            }
         }
 
         // eval the expression
         Action::Evaluate(expr_str) => {
-            let last_val = repl.eval_readable(expr_str.as_bytes());
-            println!("{}", last_val);
+            if let Some(last_val) = repl.eval_readable(expr_str.as_bytes()) {
+                println!("{}", last_val);
+            }
         }
 
         // Start repl
