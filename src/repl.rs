@@ -18,11 +18,11 @@ impl Repl {
     }
 
     // Just wraps reader's read
-    pub fn read<R: BufRead>(reader: &mut R) -> Value {
+    pub fn read<R: BufRead>(reader: &mut R) -> Option<Value> {
         reader::read(reader)
     }
     // @TODO add to reader.rs and wrap here
-    pub fn read_string(string: &str) -> Value {
+    pub fn read_string(string: &str) -> Option<Value> {
         Repl::read(&mut string.as_bytes())
     }
 
@@ -36,32 +36,43 @@ impl Repl {
     // Will possibly just add this to our environment, or turn this into a parallel of clojure.lang.RT
     //
     /// Reads the code in a file sequentially and evaluates the result
-    pub fn try_eval_file(&self, filepath: &str) -> Result<Value, std::io::Error> {
+    pub fn try_eval_file(&self, filepath: &str) -> Result<Option<Value>, std::io::Error> {
         let core = File::open(filepath)?;
         let reader = BufReader::new(core);
         Ok(self.eval_readable(reader))
     }
-    pub fn eval_file(&self, filepath: &str) -> Value {
-        self.try_eval_file(filepath).to_value()
+    pub fn eval_file(&self, filepath: &str) -> Option<Value> {
+        match self.try_eval_file(filepath) {
+            Ok(Some(v)) => Some(v),
+            Ok(None) => None,
+            Err(e) => Some(Value::Condition(e.to_string())),
+        }
     }
     /// Reads code sequentially and evaluates the result, returning the last value
-    pub fn eval_readable<R: BufRead>(&self, mut r: R) -> Value {
+    pub fn eval_readable<R: BufRead>(&self, mut r: R) -> Option<Value> {
         let mut last_val = Repl::read(&mut r);
         loop {
-            // @TODO this is hardcoded until we refactor Conditions to have keys, so that
-            //       we can properly identify them
-            // @FIXME
-            if let Value::Condition(cond) = &last_val {
-                if cond != "Tried to read empty stream; unexpected EOF" {
-                    println!("Error reading string: {}", cond);
+            match last_val {
+                None => return None,
+                Some(last_val) => {
+                    // @TODO this is hardcoded until we refactor Conditions to have keys, so that
+                    //       we can properly identify them
+                    // @FIXME
+                    if let Value::Condition(cond) = &last_val {
+                        if cond == "Tried to read empty stream; unexpected EOF" {
+                            return None;
+                        }
+
+                        println!("Error reading string: {}", cond);
+                        return Some(last_val);
+                    }
+
+                    let evaled_last_val = self.eval(&last_val); let line = line!();
+
+                    if let Value::Condition(cond) = evaled_last_val {
+                        println!("[{}:{}] {}", file!(), line, cond);
+                    }
                 }
-                return last_val;
-            }
-
-            let evaled_last_val = self.eval(&last_val);
-
-            if let Value::Condition(cond) = evaled_last_val {
-                println!("{}", cond);
             }
 
             last_val = Repl::read(&mut r);
@@ -85,19 +96,21 @@ impl Repl {
                 let next = Repl::read(&mut input);
 
                 if_chain::if_chain! {
-                    if let Value::Keyword(kw) = &next;
+                    if let Some(Value::Keyword(kw)) = &next;
                     if let Some("repl") = kw.namespace();
                     if kw.name() == "quit";
-                    then { break }
+                    then { return; }
                 }
 
                 next
             };
 
-            // Eval
-            let evaled_next = self.eval(&next);
-            // Print
-            println!("{}", evaled_next);
+            if let Some(next) = next {
+                // Eval
+                let evaled_next = self.eval(&next);
+                // Print
+                println!("{}", evaled_next);
+            }
             // Loop
         }
     }
@@ -120,24 +133,24 @@ mod tests {
     fn read_string() {
         let num = Repl::read_string("1");
         match num {
-            Value::I32(_) => {}
+            Some(Value::I32(_)) => {}
             _ => panic!("Reading of integer should have returned Value::I32"),
         }
         let list = Repl::read_string("(+ 1 2)");
         match list {
-            Value::PersistentList(_) => {}
+            Some(Value::PersistentList(_)) => {}
             _ => panic!("Reading of integer should have returned Value::PersistentList"),
         }
 
         let vector = Repl::read_string("[1 2 a]");
         match vector {
-            Value::PersistentVector(_) => {}
+            Some(Value::PersistentVector(_)) => {}
             _ => panic!("Reading of integer should have returned Value::PersistentVector"),
         }
 
         let symbol = Repl::read_string("abc");
         match symbol {
-            Value::Symbol(_) => {}
+            Some(Value::Symbol(_)) => {}
             _ => panic!("Reading of integer should have returned Value::Symbol"),
         }
     }
