@@ -21,7 +21,7 @@ impl IFn for DivideFn {
                 let val = args.get(0).unwrap().to_value();
                 match val {
                     Value::I32(0) => Value::Condition("Divide by zero".to_string()),
-                    Value::F64(0.0) => Value::Condition("Divide by zero".to_string()),
+                    Value::F64(f_) if f_ == 0.0 => Value::Condition("Divide by zero".to_string()),
                     Value::I32(a_) => Value::F64(1.0 / a_ as f64),
                     Value::F64(f_) => Value::F64(1.0 / f_),
                     _ => Value::Condition(format!(
@@ -37,7 +37,7 @@ impl IFn for DivideFn {
                 args_iterator.fold(first_arg.to_value(), |a, b| match a {
                     Value::I32(a_) => match *b {
                         Value::I32(0) => Value::Condition("Divide by zero".to_string()),
-                        Value::F64(0.0) => Value::Condition("Divide by zero".to_string()),
+                        Value::F64(b_) if b_ == 0.0 => Value::Condition("Divide by zero".to_string()),
                         Value::I32(b_) => Value::I32(a_ / b_),
                         Value::F64(b_) => Value::F64(a_ as f64 / b_),
                         _ => Value::Condition(format!(
@@ -48,7 +48,7 @@ impl IFn for DivideFn {
                     },
                     Value::F64(a_) => match *b {
                         Value::I32(0) => Value::Condition("Divide by zero".to_string()),
-                        Value::F64(0.0) => Value::Condition("Divide by zero".to_string()),
+                        Value::F64(b_) if b_ == 0.0 => Value::Condition("Divide by zero".to_string()),
                         Value::I32(b_) => Value::F64(a_ / b_ as f64),
                         Value::F64(b_) => Value::F64(a_ / b_),
                         _ => Value::Condition(format!(

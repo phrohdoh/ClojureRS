@@ -522,26 +522,25 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
     let (rest_input, _) = meta_start(input)?;
 
     let (rest_input,meta_value) = try_read(rest_input)?;
-    let mut meta = PersistentListMap::Empty;
-    match &meta_value {
+    let mut meta = match &meta_value {
         Value::Symbol(symbol) => {
             // @TODO Note; do NOT hardcode this, make some global for TAG_KEY, like Clojure does
-            meta = persistent_list_map!{"tag" => symbol};
+            persistent_list_map!{"tag" => symbol}
         },
-        Value::Keyword(keyword) => {
-            meta = persistent_list_map!(
+        Value::Keyword(_keyword) => {
+            persistent_list_map!(
                 MapEntry {
                     key: meta_value.to_rc_value(),
                     val: true.to_rc_value()
                 }
-            );
+            )
         },
         Value::String(string) => {
             // @TODO Note; do NOT hardcode this, make some global for TAG_KEY, like Clojure does
-            meta = persistent_list_map!{"tag" => string};
+            persistent_list_map!{"tag" => string}
         },
         Value::PersistentListMap(plist_map) => {
-            meta = plist_map.clone();
+            plist_map.clone()
          // Then we're already set
         }
         _ => {
@@ -550,7 +549,7 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
             //       is write clear errors 
             return Ok((rest_input,error_message::custom("When trying to read meta: metadata must be Symbol, Keyword, String, or Map")))
         }
-    }
+    };
     let (rest_input,iobj_value) = try_read(rest_input)?;
 
     // Extra clone, implement these functions for plain Values 
@@ -1031,7 +1030,7 @@ mod tests {
                     assert_eq!(Value::I32(2),*symbol.meta().get(&Keyword::intern("dog").to_rc_value()));
                     assert!(!symbol.meta().contains_key(&Keyword::intern("chicken").to_rc_value()));
                 },
-                _ => panic!("try_read_meta \"^{:cat 1 :dog 2} a\" should return a symbol")
+                _ => panic!("{}", "try_read_meta \"^{:cat 1 :dog 2} a\" should return a symbol")
             }
         }
         #[test]

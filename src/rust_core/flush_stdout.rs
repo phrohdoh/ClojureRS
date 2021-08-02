@@ -21,7 +21,7 @@ impl IFn for FlushStdoutFn {
         if args.len() != 0 {
             return error_message::wrong_arg_count(0, args.len());
         }
-        io::stdout().flush();
+        io::stdout().flush().unwrap();
         Value::Nil
     }
 }

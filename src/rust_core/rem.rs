@@ -20,7 +20,7 @@ impl IFn for RemFn {
                 match args.get(0).unwrap().to_value() {
                     Value::I32(a_) => match args.get(1).unwrap().to_value() {
                         Value::I32(0) => Value::Condition("Divide by zero".to_string()),
-                        Value::F64(0.0) => Value::Condition("Divide by zero".to_string()),
+                        Value::F64(b_) if b_ == 0.0 => Value::Condition("Divide by zero".to_string()),
                         Value::I32(b_) => Value::I32(a_ % b_),
                         Value::F64(b_) => Value::F64(a_ as f64 % b_),
                         _b => Value::Condition(format!(
@@ -31,7 +31,7 @@ impl IFn for RemFn {
                     },
                     Value::F64(a_) => match args.get(1).unwrap().to_value() {
                         Value::I32(0) => Value::Condition("Divide by zero".to_string()),
-                        Value::F64(0.0) => Value::Condition("Divide by zero".to_string()),
+                        Value::F64(b_) if b_ == 0.0 => Value::Condition("Divide by zero".to_string()),
                         Value::I32(b_) => Value::F64(a_ % b_ as f64),
                         Value::F64(b_) => Value::F64(a_ % b_),
                         _b => Value::Condition(format!(

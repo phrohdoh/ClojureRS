@@ -1,6 +1,4 @@
-use crate::keyword::Keyword;
-use crate::maps::MapEntry;
-use crate::persistent_list_map::{PersistentListMap};
+use crate::persistent_list_map::PersistentListMap;
 use crate::define_protocol;
 use crate::traits;
 use crate::symbol::Symbol;
@@ -58,5 +56,6 @@ pub fn base_meta(ns: &str, name: &str) -> PersistentListMap {
     )
 }
 
+#[cfg(test)]
 mod tests {
 }

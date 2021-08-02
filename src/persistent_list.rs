@@ -105,7 +105,7 @@ impl traits::IMeta for PersistentList {
     }
 }
 impl traits::IObj for PersistentList {
-    fn with_meta(&self,meta: PersistentListMap) -> PersistentList {
+    fn with_meta(&self, _meta: PersistentListMap) -> PersistentList {
         // @TODO implement
         self.clone()
     }

@@ -61,5 +61,7 @@ impl traits::IObj for IObj {
         }
     }
 }
+
+#[cfg(test)]
 mod tests {
 }

@@ -116,16 +116,16 @@ impl fmt::Display for Symbol {
         }
     }
 }
+
+#[cfg(test)]
 mod tests {
 
     mod symbol_tests {
-        use crate::keyword::Keyword;
         use crate::maps::MapEntry;
         use crate::persistent_list_map::ToPersistentListMapIter;
-        use crate::persistent_list_map::{PersistentListMap, PersistentListMapIter};
+        use crate::persistent_list_map::PersistentListMap;
         use crate::symbol::Symbol;
         use crate::value::ToValue;
-        use crate::value::Value;
         use std::collections::HashMap;
 
         #[test]
