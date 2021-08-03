@@ -30,7 +30,16 @@ pub enum PersistentListMap {
 }
 impl Eq for PersistentListMap {}
 
+/// ```rust,no_run
+/// # #[macro_use] extern crate rust_clojure; use rust_clojure::*;
 /// map_entry!("doc", "this is a docstring");
+/// ```
+///
+/// equals
+///
+/// ```clojure
+/// {:doc "this is a docstring"}
+/// ```
 #[macro_export]
 macro_rules! map_entry {
     ($key:expr, $value:expr) => {{
@@ -42,7 +51,20 @@ macro_rules! map_entry {
     }};
 }
 
-/// persistent_list_map!(map_entry!("key1", "value1"), map_entry!("key2", "value2"));
+/// ```rust,no_run
+/// # #[macro_use] extern crate rust_clojure; use rust_clojure::*;
+/// persistent_list_map!(
+///     map_entry!("key1", "value1"),
+///     map_entry!("key2", "value2")
+/// );
+/// ```
+///
+/// equals
+///
+/// ```clojure
+/// {:key1 "value1"
+///  :key2 "value2"}
+/// ```
 #[macro_export]
 macro_rules! persistent_list_map {
     ($($kv:expr),+) => {
