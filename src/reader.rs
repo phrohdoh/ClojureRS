@@ -1030,7 +1030,7 @@ mod tests {
                     assert_eq!(Value::I32(2),*symbol.meta().get(&Keyword::intern("dog").to_rc_value()));
                     assert!(!symbol.meta().contains_key(&Keyword::intern("chicken").to_rc_value()));
                 },
-                _ => panic!("try_read_meta \"^{:cat 1 :dog 2} a\" should return a symbol")
+                _ => panic!("{}", "try_read_meta \"^{:cat 1 :dog 2} a\" should return a symbol")
             }
         }
         #[test]
