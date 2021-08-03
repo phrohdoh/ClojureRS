@@ -2,7 +2,6 @@ use crate::persistent_list_map::PersistentListMap;
 use crate::define_protocol;
 use crate::traits;
 use crate::symbol::Symbol;
-use crate::value::ToValue;
 use crate::value::Value;
 use std::rc::Rc;
 

@@ -125,7 +125,6 @@ mod tests {
         use crate::persistent_list_map::ToPersistentListMapIter;
         use crate::persistent_list_map::PersistentListMap;
         use crate::symbol::Symbol;
-        use crate::value::ToValue;
         use std::collections::HashMap;
 
         #[test]

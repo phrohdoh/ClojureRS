@@ -1,12 +1,10 @@
 use crate::clojure_std;
 use crate::clojure_string;
-use crate::error_message;
 use crate::namespace::Namespaces;
 use crate::repl::Repl;
 use crate::rust_core;
 use crate::symbol::Symbol;
-use crate::type_tag::TypeTag;
-use crate::value::{ToValue, Value};
+use crate::value::Value;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
