@@ -34,8 +34,9 @@ impl Eq for PersistentListMap {}
 #[macro_export]
 macro_rules! map_entry {
     ($key:expr, $value:expr) => {{
-        crate::maps::MapEntry {
-            key: crate::keyword::Keyword::intern($key).to_rc_value(),
+        use $crate::value::ToValue as _;
+        $crate::maps::MapEntry {
+            key: $crate::keyword::Keyword::intern($key).to_rc_value(),
             val: $value.to_rc_value(),
         }
     }};
@@ -44,7 +45,7 @@ macro_rules! map_entry {
 /// persistent_list_map!(map_entry!("key1", "value1"), map_entry!("key2", "value2"));
 #[macro_export]
 macro_rules! persistent_list_map {
-    ($($kv:expr),*) => {
+    ($($kv:expr),+) => {
         {
             let mut temp_vec = Vec::new();
             $(
@@ -53,13 +54,18 @@ macro_rules! persistent_list_map {
                 temp_vec.into_iter().collect::<crate::persistent_list_map::PersistentListMap>()
         }
     };
-    {$($key:expr => $val:expr),*} => {
+    {$($key:expr => $val:expr),+} => {
         {
             let mut temp_vec = Vec::new();
             $(
                 temp_vec.push(map_entry!($key,$val));
             )*
                 temp_vec.into_iter().collect::<PersistentListMap>()
+        }
+    };
+    ($(@),*) => {
+        {
+            crate::persistent_list_map::PersistentListMap::Empty
         }
     };
 }
