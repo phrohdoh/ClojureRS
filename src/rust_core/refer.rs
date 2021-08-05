@@ -11,13 +11,14 @@ use if_chain::if_chain;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct ReferFn {
-    enclosing_environment: Rc<Environment>,
+    enclosing_environment: Arc<Environment>,
 }
 impl ReferFn {
-    pub fn new(enclosing_environment: Rc<Environment>) -> ReferFn {
+    pub fn new(enclosing_environment: Arc<Environment>) -> ReferFn {
         ReferFn {
             enclosing_environment,
         }

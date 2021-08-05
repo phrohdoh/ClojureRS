@@ -6,6 +6,7 @@ use crate::protocols;
 use crate::traits::IMeta;
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// Returns meta for symbol
 /// Todo: currently uses form (meta 'clojure.string/join)
@@ -14,10 +15,10 @@ use std::rc::Rc;
 /// TODO: argslists for functions
 #[derive(Debug, Clone)]
 pub struct MetaFn {
-    enclosing_environment: Rc<Environment>,
+    enclosing_environment: Arc<Environment>,
 }
 impl MetaFn {
-    pub fn new(enclosing_environment: Rc<Environment>) -> MetaFn {
+    pub fn new(enclosing_environment: Arc<Environment>) -> MetaFn {
         MetaFn {
             enclosing_environment,
         }
