@@ -4,15 +4,16 @@ use crate::ifn::IFn;
 use crate::type_tag::TypeTag;
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// Returns var for symbol
 /// example (var println)
 #[derive(Debug, Clone)]
 pub struct VarFn {
-    enclosing_environment: Rc<Environment>,
+    enclosing_environment: Arc<Environment>,
 }
 impl VarFn {
-    pub fn new(enclosing_environment: Rc<Environment>) -> VarFn {
+    pub fn new(enclosing_environment: Arc<Environment>) -> VarFn {
         VarFn {
             enclosing_environment,
         }

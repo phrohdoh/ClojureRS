@@ -4,13 +4,14 @@ use crate::repl::Repl;
 use crate::type_tag::TypeTag;
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct LoadFileFn {
-    enclosing_environment: Rc<Environment>,
+    enclosing_environment: Arc<Environment>,
 }
 impl LoadFileFn {
-    pub fn new(enclosing_environment: Rc<Environment>) -> LoadFileFn {
+    pub fn new(enclosing_environment: Arc<Environment>) -> LoadFileFn {
         LoadFileFn {
             enclosing_environment,
         }
@@ -30,7 +31,7 @@ impl IFn for LoadFileFn {
             ))
         } else if let Value::String(file) = &**args.get(0).unwrap() {
             // @TODO clean this
-            Repl::new(Rc::clone(&self.enclosing_environment)).try_eval_file(file).unwrap();
+            Repl::new(Arc::clone(&self.enclosing_environment)).try_eval_file(file).unwrap();
             //@TODO remove this placeholder value, return last value evaluated in try_eval_file
             Value::Nil
         } else {

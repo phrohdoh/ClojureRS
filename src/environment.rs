@@ -93,9 +93,15 @@ pub enum Environment {
     MainEnvironment(EnvironmentVal),
     /// Points to parent environment
     /// Introduced by Closures, and by let
-    LocalEnvironment(Rc<Environment>, RefCell<HashMap<Symbol, Rc<Value>>>),
+    LocalEnvironment(Arc<Environment>, RefCell<HashMap<Symbol, Rc<Value>>>),
 }
+
+unsafe impl Send for Environment {}
+unsafe impl Sync for Environment {}
+
+use std::sync::Arc;
 use Environment::*;
+
 impl Environment {
     pub fn has_namespace(&self, symbol: &Symbol) -> bool {
         match self.get_main_environment() {
@@ -175,7 +181,7 @@ impl Environment {
     pub fn new_main_environment() -> Environment {
         MainEnvironment(EnvironmentVal::new_main_val())
     }
-    pub fn new_local_environment(outer_environment: Rc<Environment>) -> Environment {
+    pub fn new_local_environment(outer_environment: Arc<Environment>) -> Environment {
         LocalEnvironment(outer_environment, RefCell::new(HashMap::new()))
     }
     /// Insert a binding into an arbitrary namespace
@@ -270,7 +276,7 @@ impl Environment {
         }
     }
 
-    pub fn populate_with_clojure_core(environment: Rc<Environment>) {
+    pub fn populate_with_clojure_core(environment: Arc<Environment>) {
         // Register our macros / functions ahead of time
         let add_fn = rust_core::AddFn {};
         let subtract_fn = rust_core::SubtractFn {};
@@ -331,13 +337,13 @@ impl Environment {
 
         let equals_fn = rust_core::EqualsFn {};
         let type_fn = rust_core::TypeFn {};
-        let eval_fn = rust_core::EvalFn::new(Rc::clone(&environment));
-        let ns_macro = rust_core::NsMacro::new(Rc::clone(&environment));
-        let load_file_fn = rust_core::LoadFileFn::new(Rc::clone(&environment));
-        let refer_fn = rust_core::ReferFn::new(Rc::clone(&environment));
-        let meta_fn = rust_core::MetaFn::new(Rc::clone(&environment));
-        let with_meta_fn = rust_core::WithMetaFn::new(Rc::clone(&environment));
-        let var_fn = rust_core::special_form::VarFn::new(Rc::clone(&environment));
+        let eval_fn = rust_core::EvalFn::new(Arc::clone(&environment));
+        let ns_macro = rust_core::NsMacro::new(Arc::clone(&environment));
+        let load_file_fn = rust_core::LoadFileFn::new(Arc::clone(&environment));
+        let refer_fn = rust_core::ReferFn::new(Arc::clone(&environment));
+        let meta_fn = rust_core::MetaFn::new(Arc::clone(&environment));
+        let with_meta_fn = rust_core::WithMetaFn::new(Arc::clone(&environment));
+        let var_fn = rust_core::special_form::VarFn::new(Arc::clone(&environment));
         let count_fn = rust_core::count::CountFn {};
         let lt_fn = rust_core::lt::LtFn {};
         let gt_fn = rust_core::gt::GtFn {};
@@ -524,13 +530,13 @@ impl Environment {
         // Read in clojure.core
         //
         // @TODO its time for a RT (runtime), which environment seems to be becoming
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
+        let _ = Repl::new(Arc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
         // TODO: should read into namespace if (ns ..) is given in source file
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
+        let _ = Repl::new(Arc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
     }
 
-    pub fn clojure_core_environment() -> Rc<Environment> {
-        let env = Rc::new(Environment::new_main_environment());
+    pub fn clojure_core_environment() -> Arc<Environment> {
+        let env = Arc::new(Environment::new_main_environment());
         Environment::populate_with_clojure_core(env.clone());
 
         // We can add this back once we have requires
@@ -621,6 +627,7 @@ mod tests {
         use crate::symbol::Symbol;
         use crate::value::{ToValue, Value};
         use std::rc::Rc;
+        use std::sync::Arc;
         ////////////////////////////////////////////////////////////////////////
         //
         // pub fn get(&self, sym: &Symbol) -> Rc<Value> {
@@ -630,7 +637,7 @@ mod tests {
         fn get_plus() {
             let add_fn = rust_core::AddFn {};
 
-            let environment = Rc::new(Environment::new_main_environment());
+            let environment = Arc::new(Environment::new_main_environment());
             environment.insert(Symbol::intern("+"), add_fn.to_rc_value());
 
             let plus = environment.get(&Symbol::intern("+"));
@@ -658,7 +665,7 @@ mod tests {
         fn insert_plus() {
             let add_fn = rust_core::AddFn {};
 
-            let environment = Rc::new(Environment::new_main_environment());
+            let environment = Arc::new(Environment::new_main_environment());
             environment.insert(Symbol::intern("+"), add_fn.to_rc_value());
 
             let plus: Rc<Value> = match &*environment {

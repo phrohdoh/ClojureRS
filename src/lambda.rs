@@ -4,12 +4,13 @@ use crate::persistent_list::ToPersistentList;
 use crate::symbol::Symbol;
 use crate::value::{Evaluable, ToValue, Value};
 use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub body: Rc<Value>,
     // Closed over variables
-    pub enclosing_environment: Rc<Environment>,
+    pub enclosing_environment: Arc<Environment>,
     pub arg_syms: Vec<Symbol>,
 }
 impl ToValue for Fn {
@@ -19,7 +20,7 @@ impl ToValue for Fn {
 }
 impl IFn for Fn {
     fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
-        let local_environment = Rc::new(Environment::new_local_environment(Rc::clone(
+        let local_environment = Arc::new(Environment::new_local_environment(Arc::clone(
             &self.enclosing_environment,
         )));
 

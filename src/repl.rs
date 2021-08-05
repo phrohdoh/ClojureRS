@@ -1,17 +1,17 @@
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::sync::Arc;
 
 use crate::environment::Environment;
 use crate::reader;
 use crate::value::{Evaluable, Value};
-use std::rc::Rc;
 
 pub struct Repl {
-    environment: Rc<Environment>,
+    pub environment: Arc<Environment>,
 }
 impl Repl {
-    pub fn new(environment: Rc<Environment>) -> Repl {
+    pub fn new(environment: Arc<Environment>) -> Repl {
         Repl { environment }
     }
 
@@ -28,7 +28,7 @@ impl Repl {
     // to frame eval as "environment.eval(value)", and then likewise define a
     // 'repl.eval(value)', rather than 'value.eval(environment)'
     pub fn eval(&self, value: &Value) -> Value {
-        value.eval(Rc::clone(&self.environment))
+        value.eval(Arc::clone(&self.environment))
     }
     //
     // Will possibly just add this to our environment, or turn this into a parallel of clojure.lang.RT
