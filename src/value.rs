@@ -45,10 +45,6 @@ pub enum Value {
     // but it allows me to reach into our local environment through an invoke
     LexicalEvalFn,
 
-    PersistentList(PersistentList),
-    PersistentVector(PersistentVector),
-    PersistentListMap(PersistentListMap),
-
     List(im_rc::Vector<Value>),
     Vec(im_rc::Vector<Value>),
     HashMap(im_rc::HashMap<Value, Value>),
