@@ -15,3 +15,4 @@ url = "2.1.1"
 regex = "1.3.7"
 if_chain = "1.0"
 reqwest = { version = "0.10.4", features = ["blocking"] }
+im-rc = "15.0.0"
