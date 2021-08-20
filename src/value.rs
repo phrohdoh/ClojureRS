@@ -45,9 +45,9 @@ pub enum Value {
     // but it allows me to reach into our local environment through an invoke
     LexicalEvalFn,
 
-    List(im_rc::Vector<Value>),
-    Vec(im_rc::Vector<Value>),
-    HashMap(im_rc::HashMap<Value, Value>),
+    List(im_rc::Vector<Rc<Value>>),
+    Vector(im_rc::Vector<Rc<Value>>),
+    HashMap(im_rc::HashMap<Rc<Value>, Rc<Value>>),
 
     Condition(std::string::String),
     // Macro body is still a function, that will be applied to our unevaled arguments
@@ -85,9 +85,9 @@ impl PartialEq for Value {
             (IFn(_), IFn(_)) => false,
             // Is it misleading for equality to sometimes work?
             (LexicalEvalFn, LexicalEvalFn) => true,
-            (PersistentList(plist), PersistentList(plist2)) => plist == plist2,
-            (PersistentVector(pvector), PersistentVector(pvector2)) => *pvector == *pvector2,
-            (PersistentListMap(plistmap), PersistentListMap(plistmap2)) => *plistmap == *plistmap2,
+            (List(plist), List(plist2)) => plist == plist2,
+            (Vector(pvector), Vector(pvector2)) => *pvector == *pvector2,
+            (HashMap(plistmap), HashMap(plistmap2)) => *plistmap == *plistmap2,
             (Condition(msg), Condition(msg2)) => msg == msg2,
             (QuoteMacro, QuoteMacro) => true,
             (DefmacroMacro, DefmacroMacro) => true,
@@ -130,9 +130,9 @@ impl Hash for Value {
                 n2.hash(state)
             }
             LexicalEvalFn => (ValueHash::LexicalEvalFn).hash(state),
-            PersistentList(plist) => plist.hash(state),
-            PersistentVector(pvector) => pvector.hash(state),
-            PersistentListMap(plistmap) => plistmap.hash(state),
+            List(plist) => plist.hash(state),
+            Vector(pvector) => pvector.hash(state),
+            HashMap(plistmap) => plistmap.hash(state),
             Condition(msg) => msg.hash(state),
             // Random hash is temporary;
             // @TODO implement hashing for functions / macros
@@ -167,9 +167,9 @@ impl fmt::Display for Value {
             Keyword(kw) => kw.to_string(),
             IFn(_) => std::string::String::from("#function[]"),
             LexicalEvalFn => std::string::String::from("#function[lexical-eval*]"),
-            PersistentList(plist) => plist.to_string(),
-            PersistentVector(pvector) => pvector.to_string(),
-            PersistentListMap(plistmap) => plistmap.to_string(),
+            List(plist) => plist.to_string(),
+            Vector(pvector) => pvector.to_string(),
+            HashMap(plistmap) => plistmap.to_string(),
             Condition(msg) => format!("#Condition[\"{}\"]", msg),
             Macro(_) => std::string::String::from("#macro[]"),
             QuoteMacro => std::string::String::from("#macro[quote*]"),
@@ -212,9 +212,9 @@ impl Value {
             Value::Keyword(_) => TypeTag::Keyword,
             Value::IFn(_) => TypeTag::IFn,
             Value::LexicalEvalFn => TypeTag::IFn,
-            Value::PersistentList(_) => TypeTag::PersistentList,
-            Value::PersistentVector(_) => TypeTag::PersistentVector,
-            Value::PersistentListMap(_) => TypeTag::PersistentListMap,
+            Value::List(_) => TypeTag::PersistentList,
+            Value::Vector(_) => TypeTag::PersistentVector,
+            Value::HashMap(_) => TypeTag::PersistentListMap,
             Value::Condition(_) => TypeTag::Condition,
             // Note; normal Clojure cannot take the value of a macro, so I don't imagine this
             // having significance in the long run, but we will see
