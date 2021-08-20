@@ -49,6 +49,10 @@ pub enum Value {
     PersistentVector(PersistentVector),
     PersistentListMap(PersistentListMap),
 
+    List(im_rc::Vector<Value>),
+    Vec(im_rc::Vector<Value>),
+    HashMap(im_rc::HashMap<Value, Value>),
+
     Condition(std::string::String),
     // Macro body is still a function, that will be applied to our unevaled arguments
     Macro(Rc<dyn IFn>),
