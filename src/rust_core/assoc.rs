@@ -1,7 +1,7 @@
 use crate::ifn::IFn;
-use crate::persistent_list_map::IPersistentMap;
 use crate::util::IsEven;
 use crate::value::{ToValue, Value};
+use crate::traits::IMap as _;
 use itertools::Itertools;
 use std::rc::Rc;
 
@@ -29,15 +29,15 @@ impl IFn for AssocFn {
             ));
         }
 
-        if let Value::PersistentListMap(pmap) = &*(args.get(0).unwrap().clone()) {
-            let mut retval = pmap.clone();
+        if let Value::Map(map) = &*(args.get(0).unwrap().clone()) {
+            let mut retval = map.clone();
             for (key_value, val_value) in args.into_iter().skip(1).tuples() {
                 let key = key_value.to_rc_value();
                 let val = val_value.to_rc_value();
                 println!("key: {:?}, val: {:?}", key, val);
-                retval = pmap.assoc(key, val);
+                retval = map.assoc(key, val);
             }
-            return Value::PersistentListMap(retval);
+            return Value::Map(retval);
         }
 
         Value::Nil

@@ -1,6 +1,3 @@
-use std::fmt::Debug;
-use crate::persistent_list_map::PersistentListMap;
-
-pub trait IMeta: Debug {
-    fn meta(&self) -> PersistentListMap;
+pub trait IMeta: std::fmt::Debug {
+    fn meta(&self) -> crate::types::Map;
 }

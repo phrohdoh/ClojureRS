@@ -1,6 +1,5 @@
 use crate::error_message;
 use crate::ifn::IFn;
-use crate::persistent_list_map::IPersistentMap;
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
 
@@ -19,12 +18,12 @@ impl IFn for GetFn {
             return error_message::wrong_varg_count(&[2, 3], args.len());
         }
 
-        if let Value::PersistentListMap(pmap) = &*(args.get(0).unwrap().clone()) {
+        if let Value::Map(map) = &*(args.get(0).unwrap().clone()) {
             let key = args.get(1).unwrap();
             return if let Some(not_found) = args.get(2) {
-                pmap.get_with_default(key, not_found)
+                map.get(key).unwrap_or(not_found).clone()
             } else {
-                pmap.get(key)
+                map.get(key).map(Clone::clone).unwrap_or(Value::Nil.to_rc_value())
             }.to_value();
         }
         // @TODO add error in here with erkk's new error tools
@@ -36,7 +35,7 @@ impl IFn for GetFn {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::keyword::Keyword;
+    use crate::{keyword::Keyword, map_entry};
 
     #[test]
     fn too_few_args_0() {
@@ -60,7 +59,7 @@ mod tests {
     #[test]
     fn too_few_args_1() {
         // given
-        let haystack = persistent_list_map!().to_rc_value();
+        let haystack = crate::map!().to_rc_value();
 
         let args = vec![
             haystack
@@ -81,7 +80,7 @@ mod tests {
     #[test]
     fn too_many_args_4() {
         // given
-        let haystack = persistent_list_map!(map_entry!("k", "v")).to_rc_value();
+        let haystack = crate::map!(map_entry!("k", "v")).to_rc_value();
         let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
 
         let args = vec![
@@ -103,12 +102,14 @@ mod tests {
     }
 
     mod arity_2 {
+        use crate::map_entry;
+
         use super::*;
 
         #[test]
         fn returns_associated_val_when_key_found() {
             // given
-            let haystack = persistent_list_map!(map_entry!("k", "v")).to_rc_value();
+            let haystack = crate::map!(map_entry!("k", "v")).to_rc_value();
             let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
 
             let args = vec![
@@ -124,7 +125,7 @@ mod tests {
         #[test]
         fn returns_nil_when_key_not_found() {
             // given
-            let haystack = persistent_list_map!(map_entry!("x", "v")).to_rc_value();
+            let haystack = crate::map!(map_entry!("x", "v")).to_rc_value();
             let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
 
             let args = vec![
@@ -140,7 +141,7 @@ mod tests {
         #[test]
         fn returns_nil_when_key_not_found_in_empty() {
             // given
-            let haystack = persistent_list_map!(/* empty */).to_rc_value();
+            let haystack = crate::map!(/* empty */).to_rc_value();
             let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
 
             let args = vec![
@@ -155,12 +156,14 @@ mod tests {
     }
 
     mod arity_3 {
+        use crate::{map_entry, types::Map};
+
         use super::*;
 
         #[test]
         fn returns_associated_val_when_key_found() {
             // given
-            let haystack = persistent_list_map!(map_entry!("k", "v")).to_rc_value();
+            let haystack = crate::map!(map_entry!("k", "v")).to_rc_value();
             let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
 
             let args = vec![
@@ -177,7 +180,7 @@ mod tests {
         #[test]
         fn returns_not_found_val_when_key_not_found() {
             // given
-            let haystack = persistent_list_map!(map_entry!("x", "v")).to_rc_value();
+            let haystack = crate::map!(map_entry!("x", "v")).to_rc_value();
             let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
             let if_needle_not_found = Value::Keyword(Keyword::intern("not-found")).to_rc_value();
 
@@ -195,7 +198,7 @@ mod tests {
         #[test]
         fn returns_not_found_val_when_key_not_found_in_empty() {
             // given
-            let haystack = persistent_list_map!(/* empty */).to_rc_value();
+            let haystack = Map::empty().to_rc_value();
             let needle = Value::Keyword(Keyword::intern("k")).to_rc_value();
             let if_needle_not_found = Value::Keyword(Keyword::intern("not-found")).to_rc_value();
 

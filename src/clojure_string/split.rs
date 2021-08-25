@@ -1,9 +1,9 @@
 use crate::ifn::IFn;
+use crate::types::{ImVector, Vector};
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
 
 use crate::error_message;
-use crate::persistent_vector::PersistentVector;
 use crate::type_tag::TypeTag;
 
 /// clojure.string/split [s re & [limit]] splits strings by pattern, optionally maximum of limit
@@ -32,9 +32,9 @@ impl IFn for SplitFn {
                         .filter(|ss| !ss.is_empty())
                         .map(|ss| Rc::new(Value::String(ss.to_string())))
                         .collect();
-                    return Value::PersistentVector(
-                        splits.into_iter().collect::<PersistentVector>(),
-                    );
+                    return Value::Vector(Vector(
+                        splits.into_iter().collect::<ImVector>(),
+                    ));
                 }
                 (_a, Value::Pattern(_)) => error_message::type_mismatch(TypeTag::String, &_a),
                 (Value::String(_), _b) => error_message::type_mismatch(TypeTag::Pattern, &_b),
@@ -49,7 +49,7 @@ mod tests {
     mod split_tests {
         use crate::clojure_string::split::SplitFn;
         use crate::ifn::IFn;
-        use crate::persistent_vector::PersistentVector;
+        use crate::types::{ImVector, Vector};
         use crate::value::Value;
         use std::rc::Rc;
 
@@ -63,15 +63,15 @@ mod tests {
                 Rc::new(Value::Pattern(regex::Regex::new(re).unwrap())),
             ];
             assert_eq!(
-                Value::PersistentVector(
+                Value::Vector(Vector(
                     vec![
                         Rc::new(Value::String(String::from("hello"))),
                         Rc::new(Value::String(String::from("world"))),
                         Rc::new(Value::String(String::from("again")))
                     ]
                     .into_iter()
-                    .collect::<PersistentVector>()
-                ),
+                    .collect::<ImVector>()
+                )),
                 split.invoke(args)
             );
         }
@@ -86,11 +86,11 @@ mod tests {
                 Rc::new(Value::Pattern(regex::Regex::new(re).unwrap())),
             ];
             assert_eq!(
-                Value::PersistentVector(
+                Value::Vector(Vector(
                     vec![Rc::new(Value::String(String::from("hello world again")))]
                         .into_iter()
-                        .collect::<PersistentVector>()
-                ),
+                        .collect::<ImVector>()
+                )),
                 split.invoke(args)
             );
         }
@@ -105,14 +105,14 @@ mod tests {
                 Rc::new(Value::Pattern(regex::Regex::new(re).unwrap())),
             ];
             assert_eq!(
-                Value::PersistentVector(
+                Value::Vector(Vector(
                     vec![
                         Rc::new(Value::String(String::from("hello world"))),
                         Rc::new(Value::String(String::from("again")))
                     ]
                     .into_iter()
-                    .collect::<PersistentVector>()
-                ),
+                    .collect::<ImVector>()
+                )),
                 split.invoke(args)
             );
         }

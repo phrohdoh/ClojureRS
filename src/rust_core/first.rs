@@ -35,28 +35,22 @@ impl IFn for FirstFn {
 mod tests {
     mod first_tests {
         use crate::ifn::IFn;
-        use crate::persistent_list::PersistentList;
         use crate::rust_core::first::FirstFn;
+        use crate::types::List;
         use crate::value::Value;
         use std::rc::Rc;
 
         #[test]
         fn first_on_empty_iterable() {
             let first = FirstFn {};
-            let args = vec![Rc::new(Value::PersistentList(
-                vec![].into_iter().collect::<PersistentList>(),
-            ))];
+            let args = vec![Rc::new(Value::List(List::empty()))];
             assert_eq!(Value::Nil, first.invoke(args));
         }
 
         #[test]
         fn first_on_iterable_with_one_value_list() {
             let first = FirstFn {};
-            let args = vec![Rc::new(Value::PersistentList(
-                vec![Rc::new(Value::Boolean(true))]
-                    .into_iter()
-                    .collect::<PersistentList>(),
-            ))];
+            let args = vec![Rc::new(Value::List(List::unit(true)))];
             assert_eq!(Value::Boolean(true), first.invoke(args));
         }
 

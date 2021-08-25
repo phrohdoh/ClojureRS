@@ -38,8 +38,8 @@ impl IFn for CountFn {
 mod tests {
     mod count_tests {
         use crate::ifn::IFn;
-        use crate::persistent_vector::PersistentVector;
         use crate::rust_core::CountFn;
+        use crate::types::Vector;
         use crate::value::Value;
         use std::rc::Rc;
 
@@ -53,14 +53,13 @@ mod tests {
         #[test]
         fn count_vector() {
             let count = CountFn {};
-            let args = vec![Rc::new(Value::PersistentVector(
+            let args = vec![Rc::new(Value::Vector(Vector(
                 vec![
                     Rc::new(Value::String(String::from("1"))),
                     Rc::new(Value::String(String::from("2"))),
                 ]
-                .into_iter()
-                .collect::<PersistentVector>(),
-            ))];
+                .into()
+            )))];
             assert_eq!(Value::I32(2), count.invoke(args));
         }
 

@@ -1,13 +1,11 @@
 use crate::environment::Environment;
 use crate::ifn::IFn;
 use crate::keyword::Keyword;
-use crate::lambda;
-use crate::maps::MapEntry;
-use crate::persistent_list::PersistentList::Cons;
-use crate::persistent_list::{PersistentList, ToPersistentList, ToPersistentListIter};
-use crate::persistent_list_map::{PersistentListMap, ToPersistentListMapIter};
-use crate::persistent_vector::PersistentVector;
+use crate::{lambda, map_entry};
+// use crate::persistent_list::{PersistentList, ToPersistentList, ToPersistentListIter};
+// use crate::persistent_list_map::{PersistentListMap, ToPersistentListMapIter};
 use crate::symbol::Symbol;
+use crate::types::{List, Map, Vector};
 use crate::var::Var;
 use crate::type_tag::TypeTag;
 use core::fmt::Display;
@@ -45,9 +43,9 @@ pub enum Value {
     // but it allows me to reach into our local environment through an invoke
     LexicalEvalFn,
 
-    List(im_rc::Vector<Rc<Value>>),
-    Vector(im_rc::Vector<Rc<Value>>),
-    HashMap(im_rc::HashMap<Rc<Value>, Rc<Value>>),
+    List(List),
+    Vector(Vector),
+    Map(Map),
 
     Condition(std::string::String),
     // Macro body is still a function, that will be applied to our unevaled arguments
@@ -66,12 +64,12 @@ pub enum Value {
     Nil,
     Pattern(regex::Regex),
 }
-use crate::value::Value::*;
 
 impl PartialEq for Value {
     // @TODO implement our generic IFns some other way? After all, again, this isn't Java
     // @TODO improve this? This is a hack
     fn eq(&self, other: &Value) -> bool {
+        use crate::value::Value::*;
         //
         match (self, other) {
             (I32(i), I32(i2)) => i == i2,
@@ -85,9 +83,9 @@ impl PartialEq for Value {
             (IFn(_), IFn(_)) => false,
             // Is it misleading for equality to sometimes work?
             (LexicalEvalFn, LexicalEvalFn) => true,
-            (List(plist), List(plist2)) => plist == plist2,
-            (Vector(pvector), Vector(pvector2)) => *pvector == *pvector2,
-            (HashMap(plistmap), HashMap(plistmap2)) => *plistmap == *plistmap2,
+            (List(lst1), List(lst2)) => lst1 == lst2,
+            (Vector(vec1), Vector(vec2)) => *vec1 == *vec2,
+            (Map(map1), Map(map2)) => *map1 == *map2,
             (Condition(msg), Condition(msg2)) => msg == msg2,
             (QuoteMacro, QuoteMacro) => true,
             (DefmacroMacro, DefmacroMacro) => true,
@@ -117,6 +115,7 @@ enum ValueHash {
 impl Eq for Value {}
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        use crate::value::Value::*;
         match self {
             I32(i) => i.hash(state),
             F64(d) => d.to_value().hash(state),
@@ -132,7 +131,7 @@ impl Hash for Value {
             LexicalEvalFn => (ValueHash::LexicalEvalFn).hash(state),
             List(plist) => plist.hash(state),
             Vector(pvector) => pvector.hash(state),
-            HashMap(plistmap) => plistmap.hash(state),
+            Map(plistmap) => plistmap.hash(state),
             Condition(msg) => msg.hash(state),
             // Random hash is temporary;
             // @TODO implement hashing for functions / macros
@@ -158,6 +157,7 @@ impl Hash for Value {
 }
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::value::Value::*;
         let str = match self {
             I32(val) => val.to_string(),
             F64(val) => val.to_string(),
@@ -167,9 +167,9 @@ impl fmt::Display for Value {
             Keyword(kw) => kw.to_string(),
             IFn(_) => std::string::String::from("#function[]"),
             LexicalEvalFn => std::string::String::from("#function[lexical-eval*]"),
-            List(plist) => plist.to_string(),
-            Vector(pvector) => pvector.to_string(),
-            HashMap(plistmap) => plistmap.to_string(),
+            List(list) => list.to_string(),
+            Vector(vector) => vector.to_string(),
+            Map(map) => map.to_string(),
             Condition(msg) => format!("#Condition[\"{}\"]", msg),
             Macro(_) => std::string::String::from("#macro[]"),
             QuoteMacro => std::string::String::from("#macro[quote*]"),
@@ -212,9 +212,9 @@ impl Value {
             Value::Keyword(_) => TypeTag::Keyword,
             Value::IFn(_) => TypeTag::IFn,
             Value::LexicalEvalFn => TypeTag::IFn,
-            Value::List(_) => TypeTag::PersistentList,
-            Value::Vector(_) => TypeTag::PersistentVector,
-            Value::HashMap(_) => TypeTag::PersistentListMap,
+            Value::List(_) => TypeTag::List,
+            Value::Vector(_) => TypeTag::Vector,
+            Value::Map(_) => TypeTag::Map,
             Value::Condition(_) => TypeTag::Condition,
             // Note; normal Clojure cannot take the value of a macro, so I don't imagine this
             // having significance in the long run, but we will see
@@ -252,22 +252,22 @@ impl Value {
     // hunt around for each individual implementation.
     //
     /// Applies any valid function-like Value to a PersistentList, or returns None if our Value can't be applied
-    fn apply_to_persistent_list(
+    fn apply_to_list(
         &self,
         environment: &Arc<Environment>,
-        args: &Rc<PersistentList>,
+        args: &Rc<List>,
     ) -> Option<Rc<Value>> {
         match self {
             Value::IFn(ifn) => {
                 // Eval arguments
-                let evaled_arg_refs = PersistentList::iter(args)
-                    .map(|rc_arg| rc_arg.eval_to_rc(Arc::clone(environment)))
+                let evaled_arg_refs = args.as_ref().iter()
+                    .map(|rc_arg| rc_arg.eval_to_rc(environment.clone()))
                     .collect::<Vec<Rc<Value>>>();
 
                 // Invoke fn on arguments
                 Some(Rc::new(ifn.invoke(evaled_arg_refs)))
             }
-            LexicalEvalFn => {
+            Value::LexicalEvalFn => {
                 if args.len() != 1 {
                     return Some(Rc::new(Value::Condition(format!(
                         "Wrong number of arguments (Given: {}, Expected: 1)",
@@ -275,7 +275,7 @@ impl Value {
                     ))));
                 }
                 // This should only be one value
-                let evaled_arg_values = PersistentList::iter(args)
+                let evaled_arg_values = args.iter()
                     .map(|rc_arg| rc_arg.eval_to_rc(Arc::clone(environment)))
                     .collect::<Vec<Rc<Value>>>();
 
@@ -292,7 +292,9 @@ impl Value {
             // that's never interested me all that much
             //
             Value::Macro(ifn) => {
-                let arg_refs = PersistentList::iter(args).collect::<Vec<Rc<Value>>>();
+                let arg_refs = args.iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<_>>();
 
                 let macroexpansion = Rc::new(ifn.invoke(arg_refs));
 
@@ -318,10 +320,10 @@ impl Value {
             //   as an implementation of the generic Value::Macro(Rc<IFn>)
             //
             // (def symbol doc-string? init?)
-            DefMacro => {
-                let arg_rc_values = PersistentList::iter(args)
-                    .map(|rc_arg| rc_arg)
-                    .collect::<Vec<Rc<Value>>>();
+            Value::DefMacro => {
+                let arg_rc_values = args.iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<_>>();
 
                 if arg_rc_values.len() > 3 || arg_rc_values.is_empty() {
                     return Some(Rc::new(Value::Condition(format!(
@@ -352,7 +354,7 @@ impl Value {
                         let mut meta = sym.meta();
 
                         if doc_string != Value::Nil {
-                            meta = conj!(meta,map_entry!("doc",doc_string));
+                            meta = meta.conj(map_entry!("doc",&doc_string));
                         }
 
                         let sym = sym.with_meta(meta);
@@ -365,10 +367,10 @@ impl Value {
                     )))),
                 }
             }
-            DefmacroMacro => {
-                let arg_rc_values = PersistentList::iter(args)
-                    .map(|rc_arg| rc_arg)
-                    .collect::<Vec<Rc<Value>>>();
+            Value::DefmacroMacro => {
+                let arg_rc_values = args.iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<_>>();
 
                 if arg_rc_values.len() < 2 || arg_rc_values.is_empty() {
                     return Some(Rc::new(Value::Condition(format!(
@@ -388,20 +390,17 @@ impl Value {
                     vec![Symbol::intern("fn").to_rc_value(), Rc::clone(macro_args)];
                 // vec![do expr1 expr2 expr3]
                 macro_invokable_body_vec.extend_from_slice(macro_body_exprs);
-                let macro_invokable_body = macro_invokable_body_vec
-                    .into_list()
+                let macro_invokable_body = List(macro_invokable_body_vec.into())
                     .eval(Arc::clone(&environment));
                 let macro_value = match &macro_invokable_body {
 		    Value::IFn(ifn) => Rc::new(Value::Macro(Rc::clone(&ifn))),
 		    _ => Rc::new(Value::Condition(std::string::String::from("Compiler Error: your macro_value somehow compiled into something else entirely.  I don't even know how that happened,  this behavior is hardcoded, that's impressive")))
 		};
-                Some(
-                    vec![
+                Some(List(vec![
                         Symbol::intern("def").to_rc_value(),
                         Rc::clone(macro_name),
                         macro_value,
-                    ]
-                    .into_list()
+                    ].into())
                     .eval_to_rc(Arc::clone(&environment)),
                 )
             }
@@ -410,10 +409,10 @@ impl Value {
             //
             // @TODO Rename for* everywhere, define for in terms of for* in
             //       ClojureRS
-            FnMacro => {
-                let arg_rc_values = PersistentList::iter(args)
-                    .map(|rc_arg| rc_arg)
-                    .collect::<Vec<Rc<Value>>>();
+            Value::FnMacro => {
+                let arg_rc_values = args.iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<_>>();
 
                 if arg_rc_values.is_empty() {
                     return Some(Rc::new(Value::Condition(format!(
@@ -427,7 +426,7 @@ impl Value {
                 // Let's not do docstrings yet
                 // let docstring = ...
                 match &**fn_args {
-                    Value::PersistentVector(PersistentVector { vals }) => {
+                    Value::Vector(vals) => {
                         let mut arg_syms_vec = vec![];
                         let enclosing_environment =
                             Arc::new(Environment::new_local_environment(Arc::clone(&environment)));
@@ -453,7 +452,7 @@ impl Value {
 				// vec![do expr1 expr2 expr3]
 				do_body.extend_from_slice(body_exprs);
 				// (do expr1 expr2 expr3) 
-				do_body.into_list().to_rc_value()
+				List(do_body.into()).to_rc_value()
 			    };
 
                         Some(Rc::new(
@@ -470,10 +469,10 @@ impl Value {
                     )))),
                 }
             }
-            LetMacro => {
-                let arg_rc_values = PersistentList::iter(args)
-                    .map(|rc_arg| rc_arg)
-                    .collect::<Vec<Rc<Value>>>();
+            Value::LetMacro => {
+                let arg_rc_values = args.iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<_>>();
                 if arg_rc_values.is_empty() || arg_rc_values.len() > 2 {
                     // @TODO: we give 0 but it may be 3, 4, 5...
                     return Some(Rc::new(Value::Condition(std::string::String::from(
@@ -483,20 +482,23 @@ impl Value {
                 // Already guaranteed to exist by earlier checks
                 let local_bindings = arg_rc_values.get(0).unwrap();
                 match &**local_bindings {
-                    Value::PersistentVector(vector) => {
+                    Value::Vector(vals) => {
                         //let mut local_environment_map : HashMap<Symbol,Rc<Value>> = HashMap::new();
                         let local_environment =
                             Arc::new(Environment::new_local_environment(Arc::clone(environment)));
                         // let chunk_test2 =
-                        for pair in vector.vals.chunks(2) {
-                            if let Some(rc_sym) = (&*pair).get(0)
+                        use itertools::Itertools as _;
+                        let pairs = vals.iter().chunks(2);
+                        for chunk in &pairs {
+                            let pair = chunk.take(2).collect::<Vec<_>>(); // @TODO must be a better way
+                            if let Some(rc_sym) = (&pair).get(0)
                             //(*pair[0]).clone()
                             {
                                 let val = (&*pair)
                                     .get(1)
                                     .unwrap()
                                     .eval_to_rc(Arc::clone(&local_environment));
-                                if let Value::Symbol(sym) = &(**rc_sym) {
+                                if let Value::Symbol(sym) = rc_sym.as_ref() {
                                     local_environment.insert(sym.clone(), val);
                                     //println!("Sym found: {:?}: {:?}",sym,val)
                                 }
@@ -520,7 +522,7 @@ impl Value {
             // Quote is simply a primitive, a macro base case; trying to define quote without
             // quote just involves an infinite loop of macroexpansion. Or so it seems
             //
-            QuoteMacro => {
+            Value::QuoteMacro => {
                 match args.len().cmp(&1) {
                     Ordering::Greater => Some(Rc::new(Value::Condition(format!(
                         "Wrong number of arguments (Given: {}, Expected: 1)",
@@ -530,17 +532,19 @@ impl Value {
                     Ordering::Less => Some(Rc::new(Value::Condition(std::string::String::from(
                         "Wrong number of arguments (Given: 0, Expected: 1)",
                     )))),
-                    Ordering::Equal => Some(args.nth(0)),
+                    Ordering::Equal => Some(args[0].clone()),
                 }
             }
-            IfMacro => {
+            Value::IfMacro => {
                 if args.len() != 2 && args.len() != 3 {
                     return Some(Rc::new(Value::Condition(format!(
                         "Wrong number of arguments (Given: {}, Expected: 2 or 3)",
                         args.len()
                     ))));
                 }
-                let arg_refs = PersistentList::iter(args).collect::<Vec<Rc<Value>>>();
+                let arg_refs = args.iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<_>>();
                 let condition = arg_refs.get(0).unwrap().eval(Arc::clone(environment));
 
                 if condition.is_truthy() {
@@ -549,7 +553,7 @@ impl Value {
                     Some(
                         arg_refs
                             .get(2)
-                            .unwrap_or(&Rc::new(Value::Nil))
+                            .unwrap_or(&Value::Nil.to_rc_value())
                             .eval_to_rc(Arc::clone(environment)),
                     )
                 }
@@ -654,23 +658,9 @@ impl ToValue for Rc<dyn IFn> {
     }
 }
 
-impl ToValue for PersistentList {
-    fn to_value(&self) -> Value {
-        Value::PersistentList(self.clone())
-    }
-}
-
-impl ToValue for PersistentVector {
-    fn to_value(&self) -> Value {
-        Value::PersistentVector(self.clone())
-    }
-}
-
-impl ToValue for PersistentListMap {
-    fn to_value(&self) -> Value {
-        Value::PersistentListMap(self.clone())
-    }
-}
+impl ToValue for List { fn to_value(&self) -> Value { Value::List(self.clone()) } }
+impl ToValue for Vector { fn to_value(&self) -> Value { Value::Vector(self.clone()) } }
+impl ToValue for Map { fn to_value(&self) -> Value { Value::Map(self.clone()) } }
 
 impl<T: Display, V: ToValue> ToValue for Result<V, T> {
     fn to_value(&self) -> Value {
@@ -704,67 +694,64 @@ impl Evaluable for Rc<Value> {
             // Evaluating a symbol means grabbing the value its been bound to in our environment
             Value::Symbol(symbol) => environment.get(symbol),
             // Evaluating a vector [a b c] just means [(eval a) (eval b) (eval c)]
-            Value::PersistentVector(pvector) => {
-                // Evaluate each Rc<Value> our PersistentVector wraps
-                // and return a new PersistentVector wrapping the new evaluated Values
+            Value::Vector(pvector) => {
+                // Evaluate each Rc<Value> our vec wraps
+                // and return a new vec wrapping the new evaluated Values
                 let evaled_vals = pvector
-                    .vals
                     .iter()
                     .map(|rc_val| rc_val.eval_to_rc(Arc::clone(&environment)))
-                    .collect::<PersistentVector>();
-                Rc::new(Value::PersistentVector(evaled_vals))
+                    .collect::<Vec<_>>();
+                let evaled_vals = evaled_vals.into();
+                Rc::new(Value::Vector(Vector(evaled_vals)))
             }
-            Value::PersistentListMap(plistmap) => {
-                // Evaluate each Rc<Value> our PersistentVector wraps
-                // and return a new PersistentVector wrapping the new evaluated Values
-                let evaled_vals = plistmap
-                    .iter()
-                    .map(|map_entry| MapEntry {
-                        key: map_entry.key.eval_to_rc(Arc::clone(&environment)),
-                        val: map_entry.val.eval_to_rc(Arc::clone(&environment)),
-                    })
-                    .collect::<PersistentListMap>();
-                Rc::new(Value::PersistentListMap(evaled_vals))
+            Value::Map(map) => {
+                let evaled_kvs = map.iter().map(|(k, v)| (
+                    k.eval_to_rc(Arc::clone(&environment)),
+                    v.eval_to_rc(Arc::clone(&environment)),
+                )).collect::<Vec<_>>();
+                let evaled_kvs = evaled_kvs.into();
+                Rc::new(Value::Map(Map(evaled_kvs)))
             }
             // Evaluating a list (a b c) means calling a as a function or macro on arguments b and c
-            Value::PersistentList(plist) => match plist {
-                Cons(head, tail, __count) => {
-                    // First we have to evaluate the head of our list and make sure it is function-like
-                    // and can be invoked on our arguments
-                    // (ie, a fn, a macro, a keyword ..)
-                    // @TODO remove clone if possible
-                    let ifn = Rc::clone(head).eval_to_rc(Arc::clone(&environment));
-
-                    let try_apply_ifn =
-                        ifn.apply_to_persistent_list(&Arc::clone(&environment), tail);
-
-                    // Right now we're using the normal error message, however maybe later we will try
-                    //
-                    // You tried to call value of type {} like a function, but only types of the
-                    // interface clojure.lang.IFn can be called this way
-                    //
-                    // Sounds less correct but also seems clearer; the current error message relies on
-                    // you pretty much already knowing when this error message is called
-                    try_apply_ifn.unwrap_or_else(|| {
-                        Rc::new(Value::Condition(format!(
-                            "Execution Error: {} cannot be cast to clojure.lang.IFn",
-                            ifn.type_tag()
-                        )))
-                    })
+            Value::List(lst) => {
+                if lst.is_empty() {
+                    return Rc::new(Value::List(List::empty()));
                 }
-                // () evals to ()
-                PersistentList::Empty => Rc::new(Value::PersistentList(PersistentList::Empty)),
+
+                // First we have to evaluate the head of our list and make sure it is function-like
+                // and can be invoked on our arguments
+                // (ie, a fn, a macro, a keyword ..)
+                let ifn = lst[0].eval_to_rc(environment.clone());
+                let args = lst.skip(1);
+                // @TODO (why?) do we need the &Rc wrapping post-PersistentList?
+                let args = Rc::new(List(args));
+                //
+                let try_apply_ifn = ifn.apply_to_list(&environment, &args);
+
+                // Right now we're using the normal error message, however maybe later we will try
+                //
+                // You tried to call value of type {} like a function, but only types of the
+                // interface clojure.lang.IFn can be called this way
+                //
+                // Sounds less correct but also seems clearer; the current error message relies on
+                // you pretty much already knowing when this error message is called
+                try_apply_ifn.unwrap_or_else(|| {
+                    Rc::new(Value::Condition(format!(
+                        "Execution Error: {} cannot be cast to clojure.lang.IFn",
+                        ifn.type_tag()
+                    )))
+                })
             },
             // Other types eval to self; (5 => 5,  "cat" => "cat",  #function[+] => #function[+]
             _ => Rc::clone(&self),
         }
     }
 }
-impl Evaluable for PersistentList {
-    fn eval_to_rc(&self, environment: Arc<Environment>) -> Rc<Value> {
-        self.to_rc_value().eval_to_rc(environment)
-    }
-}
+// impl Evaluable for PersistentList {
+//     fn eval_to_rc(&self, environment: Arc<Environment>) -> Rc<Value> {
+//         self.to_rc_value().eval_to_rc(environment)
+//     }
+// }
 impl Evaluable for Value {
     fn eval_to_rc(&self, environment: Arc<Environment>) -> Rc<Value> {
         self.to_rc_value().eval_to_rc(environment)
@@ -774,16 +761,16 @@ impl Evaluable for Value {
 #[cfg(test)]
 mod tests {
     use crate::keyword::Keyword;
+    use crate::{list, map_entry};
     use crate::symbol::Symbol;
     use crate::protocols;
-    use crate::value::Value;
     use crate::value::ToValue;
     use crate::traits::IMeta;
+    use crate::value::Value;
     use std::rc::Rc;
     use std::sync::Arc;
     use crate::environment::Environment;
-    use crate::persistent_list_map::PersistentListMap;
-    use crate::persistent_list_map::IPersistentMap;
+    // use crate::persistent_list_map::PersistentListMap;
     use crate::protocol::ProtocolCastable;
 
     // (def ^{:cat 1 :dog 2} a "Docstring" 1)
@@ -791,12 +778,12 @@ mod tests {
     // a with meta of {:cat 1 :dog 2 :doc "Docstring"} ?
     #[test]
     fn def_with_docstring() {
-        let sym_meta = persistent_list_map!{
-            "cat" => 1,
-            "dog" => 2
-        };
+        let sym_meta = vec![
+            map_entry!("cat", &Value::I32(1)),
+            map_entry!("dog", &Value::I32(2)),
+        ].into();
         let a = sym!("a").with_meta(sym_meta);
-        let result = Value::DefMacro.apply_to_persistent_list(
+        let result = Value::DefMacro.apply_to_list(
             &Arc::new(Environment::new_main_environment()),
             &Rc::new(list!(a "Docstring" 1))
         );
@@ -807,9 +794,8 @@ mod tests {
             .as_protocol::<protocols::IMeta>()
             .meta();
 
-        assert_eq!(Value::I32(1),*final_sym_meta.get(&Keyword::intern("cat").to_rc_value()));
-        assert_eq!(Value::I32(2),*final_sym_meta.get(&Keyword::intern("dog").to_rc_value()));
-        assert_eq!(Value::String("Docstring".to_string()),*final_sym_meta.get(&Keyword::intern("doc").to_rc_value()));
-
+        assert_eq!(&Value::I32(1), final_sym_meta.0.get(&Keyword::intern("cat").to_rc_value()).unwrap().as_ref());
+        assert_eq!(&Value::I32(2), final_sym_meta.0.get(&Keyword::intern("dog").to_rc_value()).unwrap().as_ref());
+        assert_eq!(&Value::String("Docstring".into()), final_sym_meta.0.get(&Keyword::intern("doc").to_rc_value()).unwrap().as_ref());
     }  
 }

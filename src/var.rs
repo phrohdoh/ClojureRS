@@ -1,6 +1,7 @@
 use crate::symbol::Symbol;
-use crate::persistent_list_map::PersistentListMap;
-use crate::value::{Value,ToValue};
+// use crate::persistent_list_map::PersistentListMap;
+use crate::types::Map;
+use crate::value::{ToValue, Value};
 use crate::traits;
 use crate::ifn::IFn;
 use std::fmt;
@@ -48,7 +49,7 @@ impl Var {
     // Note; not quite the same as Clojure's intern, because this does not directly reference the living
     // Its possible we should call this create or something instead, and basically not use intern at all
     pub fn intern(ns: Symbol,sym: Symbol) -> Var {
-        let empty_meta = PersistentListMap::Empty.to_rc_value();
+        let empty_meta = Map::empty().to_rc_value();
         Var {
             ns,
             sym,
@@ -62,11 +63,11 @@ impl Var {
         self.root.borrow().clone() 
     }
 
-    pub fn bind_root(&self,root: Rc<Value>){
+    pub fn bind_root(&self, root: Rc<Value>){
         self.root.replace(root);
     }
 
-    pub fn set_meta(&self,meta: PersistentListMap) {
+    pub fn set_meta(&self, meta: Map) {
         self.meta.replace_with(|_| meta.to_rc_value().as_protocol::<protocols::IPersistentMap>() );
     }
     // @TODO swap out Iterable for ISeq
@@ -101,13 +102,13 @@ impl Hash for Var {
     }
 }
 impl traits::IMeta for Var {
-    fn meta(&self) -> PersistentListMap {
-        let plist_map_value = self.meta.borrow().unwrap();
-        match &*plist_map_value {
-            Value::PersistentListMap(plist_map) => {
-                plist_map.clone()
+    fn meta(&self) -> crate::types::Map {
+        let meta_rc_val = self.meta.borrow().unwrap();
+        match &*meta_rc_val {
+            Value::Map(meta_map) => {
+                meta_map.clone()
             }
-            _ => panic!("In var.rs, meta(); IPersistentListMap failed to unwrap to PersistentListMap")
+            _ => panic!("In var.rs, meta(); IPersistentMap failed to unwrap to Value::Map")
 
         }
     }

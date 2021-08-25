@@ -136,20 +136,20 @@ mod tests {
         }
         let list = Repl::read_string("(+ 1 2)");
         match list {
-            Some(Value::PersistentList(_)) => {}
-            _ => panic!("Reading of integer should have returned Value::PersistentList"),
+            Some(Value::List(_)) => {}
+            _ => panic!("Reading of list should have returned Value::List"),
         }
 
         let vector = Repl::read_string("[1 2 a]");
         match vector {
-            Some(Value::PersistentVector(_)) => {}
-            _ => panic!("Reading of integer should have returned Value::PersistentVector"),
+            Some(Value::Vector(_)) => {}
+            _ => panic!("Reading of vector should have returned Value::Vector"),
         }
 
         let symbol = Repl::read_string("abc");
         match symbol {
             Some(Value::Symbol(_)) => {}
-            _ => panic!("Reading of integer should have returned Value::Symbol"),
+            _ => panic!("Reading of symbol should have returned Value::Symbol"),
         }
     }
 }

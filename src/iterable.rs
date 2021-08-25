@@ -1,38 +1,45 @@
-use crate::persistent_list::PersistentListIter;
-use crate::persistent_list::ToPersistentListIter;
-use crate::persistent_list_map::PersistentListMapIter;
-use crate::persistent_list_map::ToPersistentListMapIter;
-use crate::persistent_vector::PersistentVectorIter;
-use crate::persistent_vector::ToPersistentVector;
-use crate::persistent_vector::ToPersistentVectorIter;
-use crate::define_protocol;
-use crate::value::ToValue;
+use crate::types::ImHashMapIter;
+use crate::types::ImListIter;
+use crate::types::ImVectorIter;
+use crate::types::Vector;
 use crate::value::Value;
 use std::rc::Rc;
 // @TODO move to protocols::iterable
 
-define_protocol!(Iterable,PersistentList,PersistentListMap,PersistentVector);
-
-pub enum IterableIter {
-    PersistentList(PersistentListIter),
-    PersistentVector(PersistentVectorIter),
-    PersistentListMap(PersistentListMapIter),
+#[derive(Debug, Clone)]
+pub struct Iterable {
+    value: Rc<Value>
 }
-impl Iterator for IterableIter {
+impl crate::protocol::Protocol for Iterable {
+    fn raw_wrap(val: &Rc<Value>) -> Self {
+        Self { value: Rc::clone(val) }
+    }
+    fn raw_unwrap(&self) -> Rc<Value> {
+        Rc::clone(&self.value)
+    }
+    fn instanceof(val: &Rc<Value>) -> bool {
+        matches!(val.as_ref(), Value::List(_))
+    }
+}
+
+pub enum IterableIter<'source> {
+    List(ImListIter<'source>),
+    Vector(ImVectorIter<'source>),
+    HashMap(ImHashMapIter<'source>),
+}
+impl<'i> Iterator for IterableIter<'i> {
     type Item = Rc<Value>;
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            IterableIter::PersistentList(plist_giter) => plist_giter.next(),
-            IterableIter::PersistentVector(pvector_iter) => pvector_iter.next(),
-            IterableIter::PersistentListMap(plist_map_iter) => {
-                let maybe_map_entry = plist_map_iter.next();
-                if let Some(map_entry) = maybe_map_entry {
+            IterableIter::List(iter) => iter.next().map(Clone::clone),
+            IterableIter::Vector(iter) => iter.next().map(Clone::clone),
+            IterableIter::HashMap(iter) => {
+                let maybe_map_entry = iter.next();
+                if let Some((key, val)) = maybe_map_entry {
                     // In Clojure: [key val]
-                    return Some(
-                        vec![map_entry.key.clone(), map_entry.val.clone()]
-                            .into_vector()
-                            .to_rc_value(),
-                    );
+                    return Some(Rc::new(Value::Vector(
+                        Vector(vec![key.clone(), val.clone()].into())
+                    )));
                 }
                 None
             }
@@ -41,18 +48,10 @@ impl Iterator for IterableIter {
 }
 impl Iterable {
     pub fn iter(&self) -> IterableIter {
-        match &*self.value {
-            Value::PersistentList(plist) => {
-                IterableIter::PersistentList(Rc::new(plist.clone()).iter())
-            }
-            Value::PersistentVector(pvector) => {
-                IterableIter::PersistentVector(Rc::new(pvector.clone()).iter())
-            }
-            Value::PersistentListMap(pmap) => {
-                IterableIter::PersistentListMap(Rc::new(pmap.clone()).iter())
-            }
-            // We are ok panicking in this case because an invariant on the type is the assumption
-            // that we only have an Iterable if we were able to convert
+        match self.value.as_ref() {
+            Value::List(list) => IterableIter::List(list.iter()),
+            Value::Vector(vector) => IterableIter::Vector(vector.iter()),
+            Value::Map(map) => IterableIter::HashMap(map.iter()),
             _ => panic!("Called Iterable iter on non-iterable"),
         }
     }

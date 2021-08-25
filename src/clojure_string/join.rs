@@ -53,17 +53,16 @@ mod tests {
     mod join_tests {
         use crate::clojure_string::join::JoinFn;
         use crate::ifn::IFn;
-        use crate::persistent_list::PersistentList;
-        use crate::persistent_vector::PersistentVector;
+        use crate::types::{ImList, ImVector, List, Vector};
         use crate::value::Value;
         use std::rc::Rc;
 
         #[test]
         fn join_empty_collection_to_empty_string() {
             let join = JoinFn {};
-            let args = vec![Rc::new(Value::PersistentList(
-                vec![].into_iter().collect::<PersistentList>(),
-            ))];
+            let args = vec![Rc::new(Value::List(List(
+                vec![].into_iter().collect::<ImList>(),
+            )))];
             assert_eq!(Value::String(String::from("")), join.invoke(args));
         }
 
@@ -71,11 +70,11 @@ mod tests {
         fn join_one_item_collection_to_string() {
             let join = JoinFn {};
             let s = "hello";
-            let args = vec![Rc::new(Value::PersistentList(
+            let args = vec![Rc::new(Value::List(List(
                 vec![Rc::new(Value::String(String::from(s)))]
                     .into_iter()
-                    .collect::<PersistentList>(),
-            ))];
+                    .collect::<ImList>(),
+            )))];
             assert_eq!(Value::String(String::from("hello")), join.invoke(args));
         }
 
@@ -83,15 +82,15 @@ mod tests {
         fn join_multiple_items_in_collection_to_string() {
             let join = JoinFn {};
             let s = "hello";
-            let args = vec![Rc::new(Value::PersistentList(
+            let args = vec![Rc::new(Value::List(List(
                 vec![
                     Rc::new(Value::String(String::from(s))),
                     Rc::new(Value::I32(5)),
                     Rc::new(Value::String(String::from(s))),
                 ]
                 .into_iter()
-                .collect::<PersistentList>(),
-            ))];
+                .collect::<ImList>(),
+            )))];
             assert_eq!(
                 Value::String(String::from("hello5hello")),
                 join.invoke(args)
@@ -104,15 +103,15 @@ mod tests {
             let s = "hello";
             let args = vec![
                 Rc::new(Value::String(String::from(", "))),
-                Rc::new(Value::PersistentList(
+                Rc::new(Value::List(List(
                     vec![
                         Rc::new(Value::String(String::from(s))),
                         Rc::new(Value::I32(5)),
                         Rc::new(Value::String(String::from(s))),
                     ]
                     .into_iter()
-                    .collect::<PersistentList>(),
-                )),
+                    .collect::<ImList>(),
+                ))),
             ];
             assert_eq!(
                 Value::String(String::from("hello, 5, hello")),
@@ -126,15 +125,15 @@ mod tests {
             let s = "hello";
             let args = vec![
                 Rc::new(Value::String(String::from(", "))),
-                Rc::new(Value::PersistentVector(
+                Rc::new(Value::Vector(Vector(
                     vec![
                         Rc::new(Value::String(String::from(s))),
                         Rc::new(Value::I32(5)),
                         Rc::new(Value::String(String::from(s))),
                     ]
                     .into_iter()
-                    .collect::<PersistentVector>(),
-                )),
+                    .collect::<ImVector>(),
+                ))),
             ];
             assert_eq!(
                 Value::String(String::from("hello, 5, hello")),

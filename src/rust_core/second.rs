@@ -35,28 +35,31 @@ impl IFn for SecondFn {
 mod tests {
     mod second_tests {
         use crate::ifn::IFn;
-        use crate::persistent_list::PersistentList;
         use crate::rust_core::second::SecondFn;
+        use crate::types::{ImList, List};
         use crate::value::Value;
         use std::rc::Rc;
 
         #[test]
         fn second_on_empty_iterable() {
             let second = SecondFn {};
-            let args = vec![Rc::new(Value::PersistentList(
-                vec![].into_iter().collect::<PersistentList>(),
-            ))];
+            let args = vec![Rc::new(Value::List(List(
+                vec![].into(),
+            )))];
             assert_eq!(Value::Nil, second.invoke(args));
         }
 
         #[test]
         fn second_on_iterable_with_two_value_list() {
             let second = SecondFn {};
-            let args = vec![Rc::new(Value::PersistentList(
-                vec![Rc::new(Value::I32(1)), Rc::new(Value::I32(2))]
-                    .into_iter()
-                    .collect::<PersistentList>(),
-            ))];
+
+            let args = vec![
+                Rc::new(Value::I32(1)),
+                Rc::new(Value::I32(2)),
+            ];
+            let args = Value::List(List(ImList::from(args)));
+            let args = vec![Rc::new(args)];
+
             assert_eq!(Value::I32(2), second.invoke(args));
         }
 

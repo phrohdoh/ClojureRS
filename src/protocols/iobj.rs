@@ -1,35 +1,27 @@
-use crate::persistent_list_map::{PersistentListMap};
 use crate::protocol::ProtocolCastable;
 use crate::define_protocol;
+use crate::types::Map;
 use crate::value::{Value,ToValue};
 use crate::traits;
 use std::rc::Rc;
 // TODO allow nullable protocols 
 define_protocol!(
-    IObj = PersistentList     |
-           PersistentVector   |
-           PersistentListMap  |
-           Symbol //              |
+    IObj = List     |
+           Vector   |
+           Map      |
+           Symbol //|
            // IFn
 );
 impl traits::IMeta for IObj {
-    fn meta(&self) -> PersistentListMap {
+    fn meta(&self) -> Map {
         match &*self.value {
-            Value::PersistentList(val) => {
-                val.meta()
-            }
-            Value::PersistentVector(val) => {
-                val.meta()
-            }
-            Value::PersistentListMap(val) => {
-                val.meta()
-            }
-            Value::Symbol(val) => {
-                val.meta()
-            }
+            Value::List(val) => val.meta(),
+            Value::Vector(val) => val.meta(),
+            Value::Map(val) => val.meta(),
+            Value::Symbol(val) => val.meta(),
             _ => {
                 panic!("protocols::IMeta was wrapping an invalid type {} when calling meta()",self.value.type_tag())
-                //PersistentListMap::Empty
+                //Map::empty()
             }
             // Value::IFn(val) => {
             //     val.with_meta(meta)
@@ -38,15 +30,15 @@ impl traits::IMeta for IObj {
     }
 }
 impl traits::IObj for IObj {
-    fn with_meta(&self,meta: PersistentListMap) -> IObj {
+    fn with_meta(&self,meta: Map) -> IObj {
         match &*self.value {
-            Value::PersistentList(val) => {
+            Value::List(val) => {
                 val.with_meta(meta).to_rc_value().as_protocol::<IObj>()
             }
-            Value::PersistentVector(val) => {
+            Value::Vector(val) => {
                 val.with_meta(meta).to_rc_value().as_protocol::<IObj>()
             }
-            Value::PersistentListMap(val) => {
+            Value::Map(val) => {
                 val.with_meta(meta).to_rc_value().as_protocol::<IObj>()
             }
             Value::Symbol(val) => {

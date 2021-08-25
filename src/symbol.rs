@@ -1,5 +1,6 @@
-use crate::persistent_list_map::PersistentListMap;
+// use crate::persistent_list_map::PersistentListMap;
 use crate::traits;
+use crate::types::{Map, ImHashMap};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -7,7 +8,7 @@ use std::hash::{Hash, Hasher};
 pub struct Symbol {
     pub name: String,
     pub ns: Option<String>,
-    pub meta: PersistentListMap,
+    pub meta: Map,
 }
 macro_rules! sym {
     ($x:expr) => {
@@ -55,7 +56,7 @@ impl Symbol {
         Symbol {
             name: String::from(name),
             ns: if ns.is_empty() { None } else { String::from(ns).into() },
-            meta: PersistentListMap::Empty,
+            meta: Map::empty(),
         }
     }
     pub fn unqualified(&self) -> Symbol {
@@ -73,11 +74,10 @@ impl Symbol {
     pub fn namespace(&self) -> Option<&str> {
         self.ns.as_ref().map(|x| x.as_str())
     }
-    // @TODO use IPersistentMap instead perhaps 
-    pub fn meta(&self) -> PersistentListMap {
+    pub fn meta(&self) -> Map {
         self.meta.clone()
     }
-    pub fn with_meta(&self, meta: PersistentListMap) -> Symbol {
+    pub fn with_meta(&self, meta: Map) -> Symbol {
         Symbol {
             name: self.name.clone(), // String::from(self.name.clone()),
             ns: self.ns.clone(),        // String::from(self.ns.clone()),
@@ -88,7 +88,7 @@ impl Symbol {
         Self {
             name: String::from(name),
             ns: None,
-            meta: PersistentListMap::Empty,
+            meta: Map(ImHashMap::new()),
         }
     }
 }
@@ -99,12 +99,12 @@ impl PartialEq for Symbol {
     }
 }
 impl traits::IMeta for Symbol {
-    fn meta(&self) -> PersistentListMap {
+    fn meta(&self) -> Map {
         self.meta()
     }
 }
 impl traits::IObj for Symbol {
-    fn with_meta(&self,meta: PersistentListMap) -> Symbol {
+    fn with_meta(&self, meta: Map) -> Symbol {
         self.with_meta(meta)
     }
 }
@@ -121,11 +121,9 @@ impl fmt::Display for Symbol {
 mod tests {
 
     mod symbol_tests {
-        use crate::maps::MapEntry;
-        use crate::persistent_list_map::ToPersistentListMapIter;
-        use crate::persistent_list_map::PersistentListMap;
+        use crate::map_entry;
         use crate::symbol::Symbol;
-        use std::collections::HashMap;
+        use crate::types::{ImHashMap, Map};
 
         #[test]
         fn test_intern() {
@@ -134,7 +132,7 @@ mod tests {
                 Symbol {
                     ns: None,
                     name: String::from("a"),
-                    meta: PersistentListMap::Empty,
+                    meta: Map(ImHashMap::new()),
                 }
             );
         }
@@ -146,7 +144,7 @@ mod tests {
                 Symbol {
                     ns: String::from("clojure.core").into(),
                     name: String::from("a"),
-                    meta: PersistentListMap::Empty
+                    meta: Map(ImHashMap::new()),
                 }
             );
             assert_eq!(
@@ -154,7 +152,7 @@ mod tests {
                 Symbol {
                     ns: None,
                     name: String::from("a"),
-                    meta: PersistentListMap::Empty
+                    meta: Map(ImHashMap::new()),
                 }
             );
             assert_eq!(
@@ -162,7 +160,7 @@ mod tests {
                 Symbol {
                     ns: String::from("clojure.core").into(),
                     name: String::from("a"),
-                    meta: PersistentListMap::Empty
+                    meta: Map(ImHashMap::new()),
                 }
             );
             assert_eq!(
@@ -170,7 +168,7 @@ mod tests {
                 Symbol {
                     ns: String::from("clojure").into(),
                     name: String::from("a"),
-                    meta: PersistentListMap::Empty,
+                    meta: Map(ImHashMap::new()),
                 }
             );
             assert_eq!(
@@ -178,7 +176,7 @@ mod tests {
                 Symbol {
                     ns: None,
                     name: String::from("a"),
-                    meta: PersistentListMap::Empty,
+                    meta: Map(ImHashMap::new()),
                 }
             );
         }
@@ -188,13 +186,11 @@ mod tests {
                 Symbol::intern_with_ns(
                     "namespace",
                     "name"
-                ).with_meta(
-                    persistent_list_map!(map_entry!("key", "value"))
-                ),
+                ).with_meta(vec![map_entry!("key", "value")].into()),
                 Symbol {
                     ns: String::from("namespace").into(),
                     name: String::from("name"),
-                    meta: persistent_list_map!(map_entry!("key", "value"))
+                    meta: vec![map_entry!("key", "value")].into(),
                 }
             );
             assert_eq!(
@@ -202,25 +198,19 @@ mod tests {
                     "namespace",
                     "name"
                 ).with_meta(
-                    conj!(
-                        PersistentListMap::Empty,
-                        map_entry!("key", "value")
-                    )
+                    vec![map_entry!("key", "value")].into()
                 ),
                 Symbol {
                     ns: String::from("namespace").into(),
                     name: String::from("name"),
-                    meta: conj!(
-                        PersistentListMap::Empty,
-                        map_entry!("key", "value")
-                    )
+                    meta: vec![map_entry!("key", "value")].into(),
                 }
             );
         }
 
         #[test]
         fn test_work_with_hashmap() {
-            let mut hashmap = HashMap::new();
+            let mut hashmap = std::collections::HashMap::new();
             hashmap.insert(Symbol::intern("+"), 1_i32);
             hashmap.insert(Symbol::intern("-"), 2_i32);
 

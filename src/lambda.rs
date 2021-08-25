@@ -1,7 +1,8 @@
 use crate::environment::Environment;
 use crate::ifn::IFn;
-use crate::persistent_list::ToPersistentList;
+// use crate::persistent_list::ToPersistentList;
 use crate::symbol::Symbol;
+use crate::types::List;
 use crate::value::{Evaluable, ToValue, Value};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -53,7 +54,7 @@ impl IFn for Fn {
                     return Value::Condition(String::from("Invalid function argument '&' in non-variable-argument function definition"));
                 }
                 let last_sym = self.arg_syms.get(i + 1).unwrap();
-                let rest_args = args.get(i..).unwrap().to_vec().into_list().to_rc_value();
+                let rest_args = List(args.get(i..).unwrap().into()).to_rc_value();
                 local_environment.insert(last_sym.clone(), rest_args);
                 break;
             }

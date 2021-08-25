@@ -1,8 +1,6 @@
 #[macro_use] extern crate nom;
              extern crate itertools;
 
-#[macro_use] pub mod persistent_list_map;
-#[macro_use] pub mod persistent_list;
 #[macro_use] pub mod protocol;
 #[macro_use] pub mod symbol;
 #[macro_use] pub mod var;
@@ -16,10 +14,10 @@
              pub mod lambda;
              pub mod maps;
              pub mod namespace;
-             pub mod persistent_vector;
              pub mod reader;
              pub mod repl;
              pub mod rust_core;
+             pub mod types;
              pub mod type_tag;
              pub mod user_action;
                  mod util;

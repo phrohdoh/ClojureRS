@@ -1,9 +1,7 @@
 use crate::ifn::IFn;
+use crate::types::List;
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
-
-use crate::persistent_list::{PersistentList, ToPersistentListIter};
-use crate::persistent_vector::ToPersistentVectorIter;
 
 /// (concat x y & zs)
 ///
@@ -18,11 +16,11 @@ impl IFn for ConcatFn {
     fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
         let concatted_vec = args.iter().fold(Vec::new(), |mut sum, coll| {
             let coll_vec = match &**coll {
-                Value::PersistentList(plist) => {
-                    Rc::new(plist.clone()).iter().collect::<Vec<Rc<Value>>>()
+                Value::List(list) => {
+                    list.iter().map(Clone::clone).collect()
                 }
-                Value::PersistentVector(pvector) => {
-                    Rc::new(pvector.clone()).iter().collect::<Vec<Rc<Value>>>()
+                Value::Vector(vector) => {
+                    vector.iter().map(Clone::clone).collect()
                 }
                 _ => vec![],
             };
@@ -30,6 +28,6 @@ impl IFn for ConcatFn {
             sum.extend(coll_vec);
             sum
         });
-        Value::PersistentList(concatted_vec.into_iter().collect::<PersistentList>())
+        Value::List(List(concatted_vec.into()))
     }
 }

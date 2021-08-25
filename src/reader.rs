@@ -16,13 +16,11 @@ use nom::{
 
 use crate::keyword::Keyword;
 use crate::maps::MapEntry;
-use crate::persistent_list::ToPersistentList;
-use crate::persistent_list_map::{PersistentListMap,ToPersistentListMap, ToPersistentListMapIter};
-use crate::persistent_vector::ToPersistentVector;
 use crate::protocol::ProtocolCastable;
 use crate::protocol::Protocol;
 use crate::symbol::Symbol;
-use crate::error_message;
+use crate::types::{List, Vector};
+use crate::{conj, error_message, list_val, map_entry, merge};
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
 use crate::protocols;
@@ -505,7 +503,8 @@ pub fn try_read_map(input: &str) -> IResult<&str, Value> {
     loop {
         let right_brace = rbracep(rest_input);
         if let Ok((after_map_input, _)) = right_brace {
-            return Ok((after_map_input, map_as_vec.into_list_map().to_value()));
+            let map = Value::Map(map_as_vec.into());
+            return Ok((after_map_input, map));
         }
         let (_rest_input, next_key) = try_read(rest_input)?;
         let (_rest_input, next_val) = try_read(_rest_input)?;
@@ -525,10 +524,10 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
     let mut meta = match &meta_value {
         Value::Symbol(symbol) => {
             // @TODO Note; do NOT hardcode this, make some global for TAG_KEY, like Clojure does
-            persistent_list_map!{"tag" => symbol}
+            crate::map!(map_entry!("tag", symbol))
         },
         Value::Keyword(_keyword) => {
-            persistent_list_map!(
+            crate::map!(
                 MapEntry {
                     key: meta_value.to_rc_value(),
                     val: true.to_rc_value()
@@ -537,10 +536,10 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
         },
         Value::String(string) => {
             // @TODO Note; do NOT hardcode this, make some global for TAG_KEY, like Clojure does
-            persistent_list_map!{"tag" => string}
+            crate::map!(map_entry!("tag", string))
         },
-        Value::PersistentListMap(plist_map) => {
-            plist_map.clone()
+        Value::Map(map) => {
+            map.clone()
          // Then we're already set
         }
         _ => {
@@ -561,8 +560,8 @@ pub fn try_read_meta(input: &str) -> IResult<&str, Value> {
         // @TODO define some better macros and / or functions for map handling 
         meta = conj!(
             meta,
-            map_entry!("line",line),
-            map_entry!("column",column)
+            map_entry!("line",&line),
+            map_entry!("column",&column)
         );
         meta = merge!(meta,iobj_value.meta());
         Ok((rest_input,iobj_value.with_meta(meta).unwrap().to_value()))
@@ -588,7 +587,8 @@ pub fn try_read_vector(input: &str) -> IResult<&str, Value> {
         // Try parse end of vector
         // If we succeeded,  we can convert our vector of values into a PersistentVector and return our success
         if let Ok((after_vector_input, _)) = rbracketp(rest_input) {
-            return Ok((after_vector_input, vector_as_vec.into_vector().to_value()));
+            let vector = Value::Vector(Vector(vector_as_vec.into()));
+            return Ok((after_vector_input, vector));
         }
 
         // Otherwise, we need to keep reading until we get that closing bracket letting us know we're finished
@@ -607,7 +607,8 @@ pub fn try_read_list(input: &str) -> IResult<&str, Value> {
     let mut rest_input = list_inner_input;
     loop {
         if let Ok((after_list_input, _)) = rparenp(rest_input) {
-            return Ok((after_list_input, list_as_vec.into_list().to_value()));
+            let list = Value::List(List(list_as_vec.into()));
+            return Ok((after_list_input, list));
         }
         let (_rest_input, form) = try_read(rest_input)?;
         list_as_vec.push(form.to_rc_value());
@@ -875,6 +876,7 @@ mod tests {
         }
     }
 
+    /*
     mod try_read_tests {
         use crate::persistent_list;
         use crate::persistent_list_map;
@@ -1092,6 +1094,7 @@ mod tests {
             assert!(try_read(":core//ab ").ok().is_none());
         }
     }
+    */
 
     mod regex_tests {
         use crate::reader::try_read;

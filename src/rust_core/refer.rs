@@ -2,7 +2,7 @@ use crate::environment::Environment;
 use crate::error_message;
 use crate::ifn::IFn;
 use crate::keyword::Keyword;
-use crate::persistent_vector::ToPersistentVectorIter;
+// use crate::persistent_vector::ToPersistentVectorIter;
 use crate::symbol::Symbol;
 use crate::type_tag::TypeTag;
 use crate::util::IsOdd;
@@ -45,16 +45,16 @@ impl IFn for ReferFn {
                     if let Value::Symbol(ns) = &**namespace;
                     if let Value::Keyword(Keyword{sym: Symbol{name: filter_name,..}}) = &**filter_key;
                     if filter_name == "only";
-                    if let Value::PersistentVector(pvector) = &**filter_val;
+                    if let Value::Vector(im_vec) = &**filter_val;
                     then {
                         // @TODO definitely need to rename this elsewhere in codebase, where we've just been calling it 'syms'
                         let mut referred_syms_map = HashMap::new();
                         // We're going to get our vector of symbols as a pvector of Rc<Value>, we need to convert that
                         // into a vector of symbols
                         let mut sym_vector = vec![];
-                        let rc_pvector = Rc::new(pvector.clone());
+                        let rc_pvector = Rc::new(im_vec.clone());
                         for maybe_rc_sym in rc_pvector.iter() {
-                            if let Value::Symbol(sym) = &*maybe_rc_sym {
+                            if let Value::Symbol(sym) = maybe_rc_sym.as_ref() {
                                 sym_vector.push(sym.unqualified());
                             }
                             else {

@@ -1,9 +1,10 @@
 use crate::error_message;
 use crate::ifn::IFn;
 use crate::iterable::Iterable;
-use crate::persistent_list::PersistentList;
+// use crate::persistent_list::PersistentList;
 use crate::protocol::ProtocolCastable;
 use crate::type_tag::TypeTag;
+use crate::types::{ImList, List};
 use crate::value::{ToValue, Value};
 use std::rc::Rc;
 
@@ -28,11 +29,11 @@ impl IFn for MapFn {
         match (ifn_val, iterable) {
             // @TODO first arg can be any callable, not necessarily a "function"
             (Value::IFn(ifn), Some(iterable)) => {
-                iterable
+                let mapped = iterable
                     .iter()
                     .map(|rc_val| Rc::new(ifn.invoke(vec![rc_val])))
-                    .collect::<PersistentList>()
-                    .to_value()
+                    .collect::<ImList>();
+                Value::List(List(mapped))
             }
             (_, None) => {
                 Value::Condition(format!(

@@ -36,11 +36,9 @@ impl IFn for WithMetaFn {
 
         match args.get(0).unwrap().try_as_protocol::<protocols::IObj>() {
             Some(obj) => match args.get(1).unwrap().to_value() {
-                Value::PersistentListMap(plistmap) => {
-                    obj.with_meta(plistmap).unwrap().to_value()
-                }
+                Value::Map(map) => obj.with_meta(map).unwrap().to_value(),
                 _ => error_message::type_mismatch(
-                    TypeTag::PersistentListMap,
+                    TypeTag::Map,
                     args.get(0).unwrap(),
                 ),
             }
