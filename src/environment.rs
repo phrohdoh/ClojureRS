@@ -276,7 +276,10 @@ impl Environment {
         }
     }
 
-    pub fn populate_with_clojure_core(environment: Arc<Environment>) {
+    pub fn populate_with_clojure_core(
+        environment: Arc<Environment>,
+        re_provider: Box<dyn Fn(Arc<Environment>) -> Box<dyn crate::repl::ReadEval>>,
+    ) {
         // Register our macros / functions ahead of time
         let add_fn = rust_core::AddFn {};
         let subtract_fn = rust_core::SubtractFn {};
@@ -529,15 +532,23 @@ impl Environment {
         //
         // Read in clojure.core
         //
-        // @TODO its time for a RT (runtime), which environment seems to be becoming
-        let _ = Repl::new(Arc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
-        // TODO: should read into namespace if (ns ..) is given in source file
-        let _ = Repl::new(Arc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
+        //let repl = Repl::new(environment.clone());
+        //repl.eval_file("./src/clojure/core.clj");
+        //repl.eval_file("./src/clojure/string.clj");
+        let re = re_provider(environment);
+        crate::runtime::try_eval_file(&*re, "./src/clojure/core.clj").unwrap();
+        crate::runtime::try_eval_file(&*re, "./src/clojure/string.clj").unwrap();
     }
 
     pub fn clojure_core_environment() -> Arc<Environment> {
         let env = Arc::new(Environment::new_main_environment());
-        Environment::populate_with_clojure_core(env.clone());
+        Environment::populate_with_clojure_core(
+            env.clone(),
+            Box::new(|env| {
+                let r = Repl::new(env);
+                Box::new(r)
+            }),
+        );
 
         // We can add this back once we have requires
         // environment.change_or_create_namespace(Symbol::intern("user"));

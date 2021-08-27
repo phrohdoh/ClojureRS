@@ -30,10 +30,11 @@ impl IFn for LoadFileFn {
                 args.len()
             ))
         } else if let Value::String(file) = &**args.get(0).unwrap() {
-            // @TODO clean this
-            Repl::new(Arc::clone(&self.enclosing_environment)).try_eval_file(file).unwrap();
-            //@TODO remove this placeholder value, return last value evaluated in try_eval_file
-            Value::Nil
+            match Repl::new(self.enclosing_environment.clone()).eval_file(file) {
+                Some(Value::Condition(msg)) => todo!("{}", msg),
+                Some(val) => val,
+                _ => Value::Nil,
+            }
         } else {
             Value::Condition(format!(
                 "Type mismatch; Expected instance of {}, Recieved type {}",

@@ -1,11 +1,66 @@
-use std::fs::File;
 use std::io::BufRead;
-use std::io::BufReader;
 use std::sync::Arc;
 
 use crate::environment::Environment;
 use crate::reader;
+use crate::runtime;
 use crate::value::{Evaluable, Value};
+
+pub trait ReadEval {
+    fn read_single(&self, reader: &mut dyn BufRead) -> Option<Value>;
+    fn eval(&self, val: &Value) -> Value;
+    fn eval_exhaustive(&self, reader: &mut dyn BufRead) -> Option<Value>;
+}
+impl ReadEval for Repl {
+    fn read_single(&self, reader: &mut dyn BufRead) -> Option<Value> {
+        Repl::read(&mut Box::new(reader))
+    }
+    fn eval(&self, val: &Value) -> Value {
+        Repl::eval(self, val)
+    }
+    fn eval_exhaustive(&self, reader: &mut dyn BufRead) -> Option<Value> {
+        let mut most_recently_evaled_val = None;
+        //
+        while let Some(val) = ReadEval::read_single(self, reader) {
+            most_recently_evaled_val = match val {
+                Value::Condition(_) => break,
+                _ => ReadEval::eval(self, &val),
+            }.into();
+        }
+        //
+        most_recently_evaled_val
+    }
+}
+
+/*
+pub trait ReadEval {
+    fn read_single(&self, reader: &mut dyn BufRead) -> Option<Value>;
+    fn eval_exhaustive(&self, reader: &mut dyn BufRead) -> Option<Value> {
+        <Self as ReadEval>::read_single(self, reader)
+            .map(|val| repl.eval(&val))
+    }
+}
+pub trait ReadEvalFile: ReadEval {
+    fn eval_file(
+        &self,
+        repl: &Repl,
+        file_path: AsRef<std::path::Path>,
+    ) -> Option<Value> {
+        let f = std::fs::File::open(file_path.as_ref())?;
+        let rdr = std::io::BufReader::new(f);
+        <Self as ReadEval>::eval(
+            self,
+            &mut rdr,
+            repl,
+        )
+    }
+}
+impl ReadEval for Repl {
+    fn read(&self, reader: &mut dyn BufRead) -> Option<Value> {
+        reader::read(&mut Box::new(reader))
+    }
+}
+*/
 
 pub struct Repl {
     pub environment: Arc<Environment>,
@@ -30,17 +85,8 @@ impl Repl {
     pub fn eval(&self, value: &Value) -> Value {
         value.eval(Arc::clone(&self.environment))
     }
-    //
-    // Will possibly just add this to our environment, or turn this into a parallel of clojure.lang.RT
-    //
-    /// Reads the code in a file sequentially and evaluates the result
-    pub fn try_eval_file(&self, filepath: &str) -> Result<Option<Value>, std::io::Error> {
-        let core = File::open(filepath)?;
-        let reader = BufReader::new(core);
-        Ok(self.eval_readable(reader))
-    }
     pub fn eval_file(&self, filepath: &str) -> Option<Value> {
-        match self.try_eval_file(filepath) {
+        match runtime::try_eval_file(self, filepath) {
             Ok(Some(v)) => Some(v),
             Ok(None) => None,
             Err(e) => Some(Value::Condition(e.to_string())),

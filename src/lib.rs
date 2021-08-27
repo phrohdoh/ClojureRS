@@ -19,6 +19,7 @@
              pub mod persistent_vector;
              pub mod reader;
              pub mod repl;
+             pub mod runtime;
              pub mod rust_core;
              pub mod type_tag;
              pub mod user_action;
