@@ -526,6 +526,25 @@ impl Environment {
         environment.insert(Symbol::intern("type"), type_fn.to_rc_value());
         environment.insert(Symbol::intern("refer"), refer_fn.to_rc_value());
 
+        // rough, hardcoded proof-of-concept
+        environment.insert_into_namespace(
+            &sym!("native"),
+            sym!("MyCustomThing."),
+            {
+                #[derive(Debug, Clone)]
+                struct MyCustomThingCtor;
+                impl crate::ifn::IFn for MyCustomThingCtor {
+                    fn invoke(&self, args: Vec<Rc<Value>>) -> Value {
+                        Value::Native(Rc::new(crate::value::MyCustomThing {
+                            x: args.get(0).map(|x| format!("{:?}", x)).unwrap_or("no 0th arg".into()),
+                            y: args.get(1).map(std::clone::Clone::clone).unwrap_or(Value::Nil.to_rc_value()),
+                        }))
+                    }
+                }
+                Rc::new(Value::IFn(Rc::new(MyCustomThingCtor)))
+            },
+        );
+
         //
         // Read in clojure.core
         //

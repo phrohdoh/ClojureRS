@@ -22,6 +22,26 @@ use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+pub trait INative: Debug + Display + ToValue + dyn_clone::DynClone {}
+dyn_clone::clone_trait_object!(INative);
+
+#[derive(Debug, Clone)]
+pub struct MyCustomThing {
+    pub(crate) x: std::string::String,
+    pub(crate) y: Rc<Value>,
+}
+impl Display for MyCustomThing {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "MyCustomThing {{:x {}, :y {}}}", self.x, self.y)
+    }
+}
+impl ToValue for MyCustomThing {
+    fn to_value(&self) -> Value {
+        Value::Native(Rc::new(self.clone()))
+    }
+}
+impl INative for MyCustomThing {}
+
 // @TODO Change IFn's name -- IFn is a function, not an IFn.
 //       The body it executes just happens to be an the IFn.
 /// Represents any Value known to ClojureRS, by wrapping any Value known to ClojureRS;
@@ -37,6 +57,7 @@ pub enum Value {
     Var(Var),
     Keyword(Keyword),
     IFn(Rc<dyn IFn>),
+    Native(Rc<dyn INative>),
     //
     // Special case functions
     //
@@ -113,6 +134,7 @@ enum ValueHash {
     IfMacro,
     LetMacro,
     Nil,
+    Native,
 }
 impl Eq for Value {}
 impl Hash for Value {
@@ -151,6 +173,7 @@ impl Hash for Value {
             String(string) => string.hash(state),
             Pattern(p) => p.as_str().hash(state),
             Nil => ValueHash::Nil.hash(state),
+            Native(_) => ValueHash::Native.hash(state),
         }
         // self.id.hash(state);
         // self.phone.hash(state);
@@ -183,6 +206,7 @@ impl fmt::Display for Value {
                 "#\"".to_owned() + &pattern.as_str().escape_default().to_string().clone() + "\"",
             ),
             Nil => std::string::String::from("nil"),
+            Native(native) => format!("#object[{}]", native),
         };
         write!(f, "{}", str)
     }
@@ -228,6 +252,7 @@ impl Value {
             Value::String(_) => TypeTag::String,
             Value::Nil => TypeTag::Nil,
             Value::Pattern(_) => TypeTag::Pattern,
+            Value::Native(_) => TypeTag::Native,
         }
     }
 
@@ -734,6 +759,9 @@ impl Evaluable for Rc<Value> {
                     // (ie, a fn, a macro, a keyword ..)
                     // @TODO remove clone if possible
                     let ifn = Rc::clone(head).eval_to_rc(Arc::clone(&environment));
+
+                    // @TODO if head begins with `.`, this is a 'native' fn call on next val
+                    // @TODO if head ends with `.`, this is a 'native' ctor call
 
                     let try_apply_ifn =
                         ifn.apply_to_persistent_list(&Arc::clone(&environment), tail);
