@@ -524,9 +524,20 @@ impl Environment {
         // Read in clojure.core
         //
         // @TODO its time for a RT (runtime), which environment seems to be becoming
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
         // TODO: should read into namespace if (ns ..) is given in source file
-        let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
+        for file in [
+            "core",
+            "string",
+        ] {
+            let file = format!(
+                "{}/src/clojure/{}.clj",
+                env!("CARGO_MANIFEST_DIR"),
+                file,
+            );
+            Repl::new(environment.clone())
+                .try_eval_file(&file)
+                .expect(&format!("eval {}", file));
+        }
     }
 
     pub fn clojure_core_environment() -> Rc<Environment> {

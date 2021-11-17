@@ -666,8 +666,9 @@ pub fn read<R: BufRead>(reader: &mut R) -> Option<Value> {
 
     // Ask for a line from the reader, try to read, and if unable (because we need more text),
     // loop over and ask for more lines, accumulating them in input_buffer until we can read
+    let mut lines = reader.by_ref().lines();
     loop {
-        let maybe_line = reader.by_ref().lines().next();
+        let maybe_line = lines.next();
 
         match maybe_line {
             Some(Err(e)) => return Some(Value::Condition(format!("Reader error: {}", e))),

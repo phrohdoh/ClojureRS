@@ -46,34 +46,31 @@ impl Repl {
             Err(e) => Some(Value::Condition(e.to_string())),
         }
     }
-    /// Reads code sequentially and evaluates the result, returning the last value
+
+    /// reads & evaluates code sequentially, returning the final value (*not* an
+    /// end-of-input `Value::Condition`)
     pub fn eval_readable<R: BufRead>(&self, mut r: R) -> Option<Value> {
-        let mut last_val = Repl::read(&mut r);
+        let mut prev_evaled = None;
+        let mut maybe_just_read = Repl::read(&mut r);
         loop {
-            match last_val {
-                None => return None,
-                Some(last_val) => {
+            match maybe_just_read.as_ref() {
+                None => return prev_evaled,
+                Some(just_read) => {
                     // @TODO this is hardcoded until we refactor Conditions to have keys, so that
                     //       we can properly identify them
                     // @FIXME
-                    if let Value::Condition(cond) = &last_val {
+                    if let Value::Condition(cond) = just_read {
                         if cond == "Tried to read empty stream; unexpected EOF" {
                             return None;
                         }
 
-                        println!("Error reading string: {}", cond);
-                        return Some(last_val);
+                        eprintln!("error eval-ing {}: {}", just_read, cond);
+                        return maybe_just_read;
                     }
-
-                    let evaled_last_val = self.eval(&last_val); let line = line!();
-
-                    if let Value::Condition(cond) = evaled_last_val {
-                        println!("[{}:{}] {}", file!(), line, cond);
-                    }
+                    prev_evaled = Some(self.eval(just_read));
                 }
             }
-
-            last_val = Repl::read(&mut r);
+            maybe_just_read = Repl::read(&mut r);
         }
     }
 
@@ -151,5 +148,25 @@ mod tests {
             Some(Value::Symbol(_)) => {}
             _ => panic!("Reading of integer should have returned Value::Symbol"),
         }
+    }
+
+    #[test]
+    fn eval_readable_string_as_bytes_keyword_literal() {
+        let evaled = Repl::default().eval_readable(":k".as_bytes());
+        assert!(
+            matches!(evaled, Some(Value::Keyword(_))),
+            "read & eval of :k should have returned Some(Value::Keyword(_)), instead got {:?}",
+            evaled,
+        );
+    }
+
+    #[test]
+    fn eval_readable_string_as_bytes_vector_literal() {
+        let evaled = Repl::default().eval_readable("[some quoted vec]".as_bytes());
+        assert!(
+            matches!(evaled, Some(Value::PersistentVector(_))),
+            "read & eval of [some quoted vec] should have returned Some(Value::PersistentVector(_)), instead got {:?}",
+            evaled,
+        );
     }
 }

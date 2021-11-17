@@ -416,7 +416,7 @@ impl Value {
 
                 if arg_rc_values.is_empty() {
                     return Some(Rc::new(Value::Condition(format!(
-                        "Wrong number of arguments (Given: {}, Expect: >=1",
+                        "Wrong number of arguments (Given: {}, Expect: >=1)",
                         arg_rc_values.len()
                     ))));
                 }
