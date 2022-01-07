@@ -292,6 +292,7 @@ impl Environment {
         let more_fn = rust_core::MoreFn {};
         let first_fn = rust_core::FirstFn {};
         let second_fn = rust_core::SecondFn {};
+        let read_string_fn = rust_core::ReadStringFn {};
 
         // rust implementations of core functions
         let slurp_fn = rust_core::slurp::SlurpFn {};
@@ -501,6 +502,7 @@ impl Environment {
         environment.insert(Symbol::intern("more"), more_fn.to_rc_value());
         environment.insert(Symbol::intern("first"), first_fn.to_rc_value());
         environment.insert(Symbol::intern("second"), second_fn.to_rc_value());
+        environment.insert(Symbol::intern("read-string"), read_string_fn.to_rc_value());
         // input and output
         environment.insert(
             Symbol::intern("system-newline"),

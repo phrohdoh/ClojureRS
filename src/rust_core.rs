@@ -107,3 +107,19 @@ pub use self::equals::*;
 
 pub(crate) mod r#type;
 pub use self::r#type::*;
+
+#[derive(Debug, Clone)]
+pub struct ReadStringFn;
+impl crate::ifn::IFn for ReadStringFn {
+    fn invoke(&self, args: Vec<std::rc::Rc<crate::value::Value>>) -> crate::value::Value {
+        match &*args.first().unwrap().clone() {
+            crate::value::Value::String(s) => crate::repl::Repl::read_string(&s).expect("successful read"),
+            _ => crate::value::Value::Condition("read-string requires a string as its first argument".to_string()),
+        }
+    }
+}
+impl crate::value::ToValue for ReadStringFn {
+    fn to_value(&self) -> crate::value::Value {
+        crate::value::Value::IFn(std::rc::Rc::new(self.clone()))
+    }
+}
