@@ -257,6 +257,30 @@ impl Value {
         args: &Rc<PersistentList>,
     ) -> Option<Rc<Value>> {
         match self {
+            Value::Keyword(needle) => {
+                let mut args = PersistentList::iter(args);
+                let haystack = args.next().expect("haystack");
+
+                if !matches!(haystack.type_tag(), TypeTag::PersistentListMap) {
+                    // todo
+                    return None;
+                }
+
+                let opt_val_if_needle_not_found = args.next();
+                match opt_val_if_needle_not_found {
+                    Some(val_if_needle_not_found) =>
+                        crate::rust_core::get::GetFn {}.invoke(vec![
+                            haystack,
+                            needle.to_rc_value(),
+                            val_if_needle_not_found,
+                        ]),
+                    _ =>
+                        crate::rust_core::get::GetFn {}.invoke(vec![
+                            haystack,
+                            needle.to_rc_value(),
+                        ]),
+                }.to_rc_value().into()
+            },
             Value::IFn(ifn) => {
                 // Eval arguments
                 let evaled_arg_refs = PersistentList::iter(args)
