@@ -23,12 +23,6 @@ pub struct EnvironmentVal {
     namespaces: Namespaces,
 }
 impl EnvironmentVal {
-    // @TODO is this wrapper really necessary, or is it just inviting an invariant break?
-    /// Note; do not use. Does not enforce the invariant that namespace exist
-    /// Use change_or_create_namespace instead
-    fn change_namespace(&self, name: Symbol) {
-        self.curr_ns_sym.replace(name);
-    }
     fn change_or_create_namespace(&self, symbol: &Symbol) {
         if self.has_namespace(symbol) {
             self.change_namespace(symbol.unqualified());
