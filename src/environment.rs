@@ -272,7 +272,7 @@ impl Environment {
             }
         }
     }
-    pub fn clojure_core_environment() -> Rc<Environment> {
+    pub fn populate_with_clojure_core(environment: Rc<Environment>) {
         // Register our macros / functions ahead of time
         let add_fn = rust_core::AddFn {};
         let subtract_fn = rust_core::SubtractFn {};
@@ -330,7 +330,6 @@ impl Environment {
         let fn_macro = Value::FnMacro {};
         let defmacro_macro = Value::DefmacroMacro {};
         let if_macro = Value::IfMacro {};
-        let environment = Rc::new(Environment::new_main_environment());
 
         let equals_fn = rust_core::EqualsFn {};
         let eval_fn = rust_core::EvalFn::new(Rc::clone(&environment));
@@ -528,6 +527,11 @@ impl Environment {
         let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/core.clj");
         // TODO: should read into namespace if (ns ..) is given in source file
         let _ = Repl::new(Rc::clone(&environment)).try_eval_file("./src/clojure/string.clj");
+    }
+
+    pub fn clojure_core_environment() -> Rc<Environment> {
+        let environment = Rc::New(Environment::new_main_environment());
+        Environment::populate_with_clojure_core(env.clone());
 
         // We can add this back once we have requires
         // environment.change_or_create_namespace(Symbol::intern("user"));
