@@ -524,7 +524,7 @@ impl Environment {
     }
 
     pub fn clojure_core_environment() -> Rc<Environment> {
-        let environment = Rc::New(Environment::new_main_environment());
+        let environment = Rc::new(Environment::new_main_environment());
         Environment::populate_with_clojure_core(env.clone());
 
         // We can add this back once we have requires
