@@ -23,12 +23,15 @@ pub struct EnvironmentVal {
     namespaces: Namespaces,
 }
 impl EnvironmentVal {
+    fn _change_namespace(&self, name: Symbol) {
+        self.curr_ns_sym.replace(name);
+    }
     fn change_or_create_namespace(&self, symbol: &Symbol) {
         if self.has_namespace(symbol) {
-            self.change_namespace(symbol.unqualified());
+            self._change_namespace(symbol.unqualified());
         } else {
             self.create_namespace(symbol);
-            self.change_namespace(symbol.unqualified());
+            self._change_namespace(symbol.unqualified());
         }
     }
     fn add_referred_syms(&self, namespace_sym: &Symbol, syms: HashMap<Symbol, Vec<Symbol>>) {
