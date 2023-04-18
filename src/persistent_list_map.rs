@@ -15,7 +15,6 @@
 
 use crate::maps::MapEntry;
 use crate::traits;
-use crate::value::Value;
 
 use std::collections::HashMap;
 use std::convert::From;
@@ -34,9 +33,10 @@ impl Eq for PersistentListMap {}
 #[macro_export]
 macro_rules! map_entry {
     ($key:expr, $value:expr) => {{
-        MapEntry {
-            key: Keyword::intern($key).to_rc_value(),
-            val: $value.to_rc_value(),
+        use $crate::value::ToValue as _;
+        $crate::maps::MapEntry {
+            key: $crate::keyword::Keyword::intern($key).to_rc_value(),
+            val: $value.to_rc_value()
         }
     }};
 }
@@ -50,7 +50,7 @@ macro_rules! persistent_list_map {
             $(
                 temp_vec.push($kv);
             )*
-                temp_vec.into_iter().collect::<PersistentListMap>()
+                temp_vec.into_iter().collect::<$crate::persistent_list_map::PersistentListMap>()
         }
     };
     {$($key:expr => $val:expr),*} => {
@@ -59,7 +59,7 @@ macro_rules! persistent_list_map {
             $(
                 temp_vec.push(map_entry!($key,$val));
             )*
-                temp_vec.into_iter().collect::<PersistentListMap>()
+                temp_vec.into_iter().collect::<$crate::persistent_list_map::PersistentListMap>()
         }
     };
 }
